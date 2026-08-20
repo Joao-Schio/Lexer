@@ -1,0 +1,26 @@
+#include <iostream>
+#include "token.hpp"
+#include "lexer.hpp"
+#include "scanner.hpp"
+
+lexer::Lexer criar_lexer(std::string&& caminho)
+{
+    using lexer::Scanner, lexer::Lexer;
+    Scanner scanner = Scanner { std::ifstream { caminho } };
+    Lexer lexer = Lexer { std::move(scanner) };
+    return lexer;
+}
+
+
+int main(int argc, char **argv)
+{
+    using namespace lexer;
+    if (argc == 1)
+    {
+        std::println("Um arquivo fonte não foi especificado");
+        return 1;
+    }
+
+    Lexer lexer = criar_lexer(std::move(argv[1]));
+    std::println("{}", lexer.get_prox_token());
+}
