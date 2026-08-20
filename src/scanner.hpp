@@ -22,7 +22,7 @@ class Scanner
             }
         }
 
-        std::tuple<std::string, size_t> get_line();
+        std::string get_line();
 
         bool get_termino() const
         {

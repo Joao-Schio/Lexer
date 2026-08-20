@@ -90,25 +90,17 @@ class Token
 {
     private:
         TokenValue valor;
-        std::size_t linha;
 
     public:
-        Token(TokenValue valor, std::size_t linha)
-            : valor(std::move(valor)),
-              linha(linha)
-        {
-        }
+        Token(TokenValue valor)
+            : valor(std::move(valor)){ }
 
         const TokenValue& get_token() const
         {
             return valor;
         }
 
-        std::size_t get_linha() const
-        {
-            return linha;
-        }
-    };
+};
 }
 
 
@@ -138,40 +130,36 @@ struct formatter<lexer::Token>
                 {
                     return std::format_to(
                         ctx.out(),
-                        "({}, {}) at line {}",
+                        "({}, {})",
                         T::nome,
-                        value.valor,
-                        token.get_linha()
+                        value.valor
                     );
                 }
                 else if constexpr (std::is_same_v<T, lexer::Int>)
                 {
                     return std::format_to(
                         ctx.out(),
-                        "({}, {}) at line {}",
+                        "({}, {})",
                         T::nome,
-                        value.numero,
-                        token.get_linha()
+                        value.numero
                     );
                 }
                 else if constexpr (std::is_same_v<T, lexer::ErroLexico>)
                 {
                     return std::format_to(
                         ctx.out(),
-                        "({}, '{}') at line {}",
+                        "({}, '{}')",
                         T::nome,
-                        value.caractere,
-                        token.get_linha()
+                        value.caractere
                     );
                 }
                 else
                 {
                     return std::format_to(
                         ctx.out(),
-                        "({}, {}) at line {}",
+                        "({}, {})",
                         T::nome,
-                        T::primitiva,
-                        token.get_linha()
+                        T::primitiva
                     );
                 }
             },

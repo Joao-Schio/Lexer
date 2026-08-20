@@ -3,7 +3,7 @@
 
 namespace lexer
 {
-std::tuple<std::string, size_t> Scanner::get_line()
+std::string Scanner::get_line()
 {
     if (_acabou)
     {
@@ -17,6 +17,6 @@ std::tuple<std::string, size_t> Scanner::get_line()
         _acabou = true;
         throw std::runtime_error("Arquivo ja terminado");
     }
-    return {std::move(linha), 2};
+    return linha;
 }
 }

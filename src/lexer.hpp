@@ -18,16 +18,16 @@ class Lexer
 
         Token get_prox_token()
         {
-            auto [linha, numero] = _scanner.get_line();
+            auto linha = _scanner.get_line();
             for(char i : linha)
             {
                 if (i == '=')
                 {
-                    return Token { Atribuicao{ }, numero };
+                    return Token { Atribuicao{ } };
                 }
             }
 
-            return Token { ErroLexico {'a'}, numero};
+            return Token { ErroLexico {'a'}};
         }
 };
 }
