@@ -22,5 +22,11 @@ int main(int argc, char **argv)
     }
 
     Lexer lexer = criar_lexer(std::move(argv[1]));
-    std::println("{}", lexer.get_prox_token());
+    auto token = lexer.get_prox_token();
+    while(!std::holds_alternative<Eof>(token.get_token()))
+    {
+        std::println("{}", token);
+        token = lexer.get_prox_token();
+    }
+    std::println("{}", token);
 }

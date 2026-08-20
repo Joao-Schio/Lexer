@@ -19,4 +19,25 @@ std::string Scanner::get_line()
     }
     return linha;
 }
+
+char Scanner::peek_next() const
+{
+    if (_linha.size() > _pos)
+    {
+        char saida = _linha.at(_pos);
+        return saida;
+    }
+    return 0;
+}
+
+char Scanner::get_next()
+{
+    if (_linha == "")
+    {
+        _linha = get_line();
+    }
+    auto saida = peek_next();
+    _pos++;
+    return saida;
+}
 }
