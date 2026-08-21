@@ -49,11 +49,11 @@ Token Lexer::get_prox_token()
     {
         return Token { Delimitador { } };
     }
-    else if (std::isalpha(prox))
+    else if (std::isalpha(prox) || prox == '_')
     {
         std::string nome_id;
         nome_id += prox;
-        while(std::isalpha(_scanner.peek_next()))
+        while(std::isalpha(_scanner.peek_next()) || _scanner.peek_next() == '_')
         {
             nome_id += _scanner.get_next();
         }

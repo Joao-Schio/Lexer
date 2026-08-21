@@ -1,0 +1,1 @@
+_uma_variavel_qualquer = 20;
