@@ -81,8 +81,9 @@ struct ErroLexico
 {
     static constexpr std::string_view nome = "TK_ERRO";
     std::string erro;
-    explicit ErroLexico(std::string&& erro)
-        : erro(std::move(erro))
+    size_t numero_linha;
+    explicit ErroLexico(std::string&& erro, size_t numero_linha)
+        : erro(std::move(erro)), numero_linha(numero_linha)
     {}
     ErroLexico(const ErroLexico&) = delete;
     ErroLexico& operator=(const ErroLexico&) = delete;
@@ -173,9 +174,10 @@ struct formatter<lexer::Token>
                 {
                     return std::format_to(
                         ctx.out(),
-                        "({}, '{}')",
+                        "({}, '{}' na linha {})",
                         T::nome,
-                        value.erro
+                        value.erro,
+                        value.numero_linha
                     );
                 }
                 else if constexpr (std::is_same_v<T, lexer::QuebraLinha>)

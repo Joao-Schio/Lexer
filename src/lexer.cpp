@@ -74,7 +74,7 @@ Token Lexer::get_prox_token()
             {
                 invalido += _scanner.get_next();
             }
-            return Token { ErroLexico { std::move(invalido) } };
+            return Token { ErroLexico { std::move(invalido), this -> _qnt_quebra_de_linha } };
         }
         return Token { Int { std::stoull(numeros) } };
     }
@@ -83,9 +83,10 @@ Token Lexer::get_prox_token()
         return Token { Eof { } };
     }
     else if (prox == '\n')
-    {
+    {   
+        _qnt_quebra_de_linha++;
         return Token { QuebraLinha { } };
     }
-    return Token { ErroLexico { std::string { prox } } };
+    return Token { ErroLexico { std::string { prox }, this -> _qnt_quebra_de_linha } };
 }
 }
