@@ -2,7 +2,7 @@
 
 #include "scanner.hpp"
 #include "token.hpp"
-
+#include <vector>
 
 namespace lexer
 {
@@ -19,13 +19,13 @@ class Lexer
         char get_prox_char()
         {
             char prox = _scanner.get_next();
-            while(std::isspace(prox))
+            while(std::isspace(prox) && prox != '\n')
             {
                 prox = _scanner.get_next();
             }
             if (prox == '/' && _scanner.peek_next() == '/')
             {
-                while(prox != '\n')
+                while(prox != '\n' && prox != 0)
                 {
                     prox = _scanner.get_next();
                 }
@@ -84,6 +84,10 @@ class Lexer
             else if (prox == 0)
             {
                 return Token { Eof { } };
+            }
+            else if (prox == '\n')
+            {
+                return Token { QuebraLinha { } };
             }
             return Token { ErroLexico { prox } };
         }

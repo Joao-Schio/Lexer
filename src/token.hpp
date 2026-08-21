@@ -73,6 +73,8 @@ struct ErroLexico
     char caractere;
 };
 
+struct QuebraLinha { };
+
 using TokenValue = std::variant<
         Id,
         Int,
@@ -83,7 +85,8 @@ using TokenValue = std::variant<
         Atribuicao,
         Delimitador,
         Eof,
-        ErroLexico
+        ErroLexico,
+        QuebraLinha
     >;
 
 class Token
@@ -151,6 +154,13 @@ struct formatter<lexer::Token>
                         "({}, '{}')",
                         T::nome,
                         value.caractere
+                    );
+                }
+                else if constexpr (std::is_same_v<T, lexer::QuebraLinha>)
+                {
+                    return std::format_to(
+                        ctx.out(),
+                        "\n"
                     );
                 }
                 else

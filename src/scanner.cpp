@@ -3,28 +3,11 @@
 
 namespace lexer
 {
-std::string Scanner::get_line()
-{
-    if (_acabou)
-    {
-        throw std::runtime_error("Arquivo ja terminado");
-    }
-
-    std::string linha;
-
-    if (!std::getline(_arquivo, linha))
-    {
-        _acabou = true;
-        throw std::runtime_error("Arquivo ja terminado");
-    }
-    return linha;
-}
-
 char Scanner::peek_next() const
 {
-    if (_linha.size() > _pos)
+    if (_arquivo_str.size() > _pos)
     {
-        char saida = _linha.at(_pos);
+        char saida = _arquivo_str.at(_pos);
         return saida;
     }
     return 0;
@@ -32,12 +15,12 @@ char Scanner::peek_next() const
 
 char Scanner::get_next()
 {
-    if (_linha == "")
-    {
-        _linha = get_line();
-    }
     auto saida = peek_next();
     _pos++;
+    if (saida == 0)
+    {
+        _acabou = true;
+    }
     return saida;
 }
 }

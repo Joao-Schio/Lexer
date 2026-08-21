@@ -25,8 +25,8 @@ int main(int argc, char **argv)
     auto token = lexer.get_prox_token();
     while(!std::holds_alternative<Eof>(token.get_token()))
     {
-        std::println("{}", token);
+        std::print("{}", token);
         token = lexer.get_prox_token();
     }
-    std::println("{}", token);
+    std::print("{}", token);
 }
