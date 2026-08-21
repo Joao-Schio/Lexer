@@ -17,6 +17,16 @@ struct Id
     static constexpr std::string_view nome = "TK_ID";
 
     std::string valor;
+    explicit Id(std::string&& valor)
+        : valor(std::move(valor))
+    {}
+
+    Id(const Id&) = delete;
+    Id& operator=(const Id&) = delete;
+
+    Id(Id&&) noexcept = default;
+    Id& operator=(Id&&) noexcept = default;
+
 };
 
 struct Int
@@ -71,6 +81,14 @@ struct ErroLexico
 {
     static constexpr std::string_view nome = "TK_ERRO";
     std::string erro;
+    explicit ErroLexico(std::string&& erro)
+        : erro(std::move(erro))
+    {}
+    ErroLexico(const ErroLexico&) = delete;
+    ErroLexico& operator=(const ErroLexico&) = delete;
+
+    ErroLexico(ErroLexico&&) noexcept = default;
+    ErroLexico& operator=(ErroLexico&&) noexcept = default;
 };
 
 struct QuebraLinha { };
