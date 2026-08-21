@@ -84,7 +84,7 @@ Token Lexer::get_prox_token()
     }
     else if (prox == '\n')
     {   
-        _qnt_quebra_de_linha++;
+        _numero_linha++;
         return Token { QuebraLinha { } };
     }
     return Token { ErroLexico { std::string { prox }, this -> _numero_linha } };
