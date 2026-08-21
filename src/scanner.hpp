@@ -27,7 +27,7 @@ class Scanner
             }
             std::ostringstream buffer;
             buffer << _arquivo.rdbuf();
-            _arquivo_str = buffer.str();
+            _arquivo_str = std::move(buffer).str();
         }
         char get_next();
         char peek_next() const;
