@@ -74,7 +74,7 @@ Token Lexer::get_prox_token()
             {
                 invalido += _scanner.get_next();
             }
-            return Token { ErroLexico { invalido } };
+            return Token { ErroLexico { std::move(invalido) } };
         }
         return Token { Int { std::stoull(numeros) } };
     }
