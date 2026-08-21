@@ -74,7 +74,7 @@ Token Lexer::get_prox_token()
             {
                 invalido += _scanner.get_next();
             }
-            return Token { ErroLexico { std::move(invalido), this -> _qnt_quebra_de_linha } };
+            return Token { ErroLexico { std::move(invalido), this -> _numero_linha } };
         }
         return Token { Int { std::stoull(numeros) } };
     }
@@ -87,6 +87,6 @@ Token Lexer::get_prox_token()
         _qnt_quebra_de_linha++;
         return Token { QuebraLinha { } };
     }
-    return Token { ErroLexico { std::string { prox }, this -> _qnt_quebra_de_linha } };
+    return Token { ErroLexico { std::string { prox }, this -> _numero_linha } };
 }
 }

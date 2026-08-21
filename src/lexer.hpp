@@ -11,7 +11,7 @@ class Lexer
 {
     private:
         Scanner _scanner;
-        size_t _qnt_quebra_de_linha;
+        size_t _numero_linha;
     private:
         static inline bool eh_separador(char c)
         {
@@ -28,7 +28,7 @@ class Lexer
         char get_prox_char();
 
     public:
-        Lexer(Scanner&& scanner) : _scanner(std::move(scanner)), _qnt_quebra_de_linha(0) { }
+        Lexer(Scanner&& scanner) : _scanner(std::move(scanner)), _numero_linha(1) { }
         Token get_prox_token();
 
 };
