@@ -120,7 +120,11 @@ class Token
         {
             return valor;
         }
-
+        Token(const Token&) = delete;
+        Token& operator=(const Token&) = delete;
+            
+        Token(Token&&) noexcept = default;
+        Token& operator=(Token&&) noexcept = default;
 };
 }
 
