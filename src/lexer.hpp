@@ -12,9 +12,18 @@ class Lexer
     private:
         Scanner _scanner;
 
-
-    public:
-        Lexer(Scanner&& scanner) : _scanner(std::move(scanner)) { }
+    private:
+        static inline bool eh_separador(char c)
+        {
+            return std::isspace(static_cast<unsigned char>(c))
+                || c == 0
+                || c == ';'
+                || c == '+'
+                || c == '-'
+                || c == '*'
+                || c == '/'
+                || c == '=';
+        }
 
         char get_prox_char()
         {
@@ -33,6 +42,10 @@ class Lexer
             }
             return prox;
         }
+
+
+    public:
+        Lexer(Scanner&& scanner) : _scanner(std::move(scanner)) { }
 
         Token get_prox_token()
         {
@@ -79,6 +92,16 @@ class Lexer
                 {
                     numeros += _scanner.get_next();
                 }
+                if (!eh_separador(_scanner.peek_next()))
+                {
+                    std::string invalido = std::move(numeros);
+
+                    while (!eh_separador(_scanner.peek_next()))
+                    {
+                        invalido += _scanner.get_next();
+                    }
+                    return Token { ErroLexico { invalido } };
+                }
                 return Token { Int { std::stoull(numeros) } };
             }
             else if (prox == 0)
@@ -89,7 +112,7 @@ class Lexer
             {
                 return Token { QuebraLinha { } };
             }
-            return Token { ErroLexico { prox } };
+            return Token { ErroLexico { std::string { prox } } };
         }
 
 };

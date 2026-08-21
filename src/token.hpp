@@ -70,7 +70,7 @@ struct Eof
 struct ErroLexico
 {
     static constexpr std::string_view nome = "TK_ERRO";
-    char caractere;
+    std::string erro;
 };
 
 struct QuebraLinha { };
@@ -153,7 +153,7 @@ struct formatter<lexer::Token>
                         ctx.out(),
                         "({}, '{}')",
                         T::nome,
-                        value.caractere
+                        value.erro
                     );
                 }
                 else if constexpr (std::is_same_v<T, lexer::QuebraLinha>)
