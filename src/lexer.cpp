@@ -53,7 +53,7 @@ Token Lexer::get_prox_token()
     {
         std::string nome_id;
         nome_id += prox;
-        while(std::isalpha(_scanner.peek_next()) || _scanner.peek_next() == '_')
+        while(std::isalpha(_scanner.peek_next()) || _scanner.peek_next() == '_' || std::isdigit(_scanner.peek_next()))
         {
             nome_id += _scanner.get_next();
         }
