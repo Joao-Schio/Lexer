@@ -25,7 +25,7 @@ class Lexer
             }
             if (prox == '/' && _scanner.peek_next() == '/')
             {
-                while(prox != '\n' && prox != 0)
+                while(_scanner.peek_next() != '\n' && prox != 0)
                 {
                     prox = _scanner.get_next();
                 }

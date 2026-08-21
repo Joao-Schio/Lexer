@@ -28,5 +28,5 @@ int main(int argc, char **argv)
         std::print("{}", token);
         token = lexer.get_prox_token();
     }
-    std::print("{}", token);
+    std::print("{}\n", token);
 }
