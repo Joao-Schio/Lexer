@@ -4,7 +4,7 @@
 #include <string>
 #include <tuple>
 #include <sstream>
-#include <iostream>
+
 namespace lexer
 {
 class Scanner
