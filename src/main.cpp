@@ -12,6 +12,29 @@ lexer::Lexer criar_lexer(std::string&& caminho)
 }
 
 
+void print_tokens(const std::vector<lexer::Token> &tokens)
+{
+    bool primeiro = true;
+    for (const auto& i : tokens)
+    {
+        if (primeiro == true)
+        {
+            std::print("{}", i);
+            primeiro = false;
+        }
+        else if (std::holds_alternative<lexer::QuebraLinha>(i.get_token()))
+        {
+            std::print("{}", i);
+            primeiro = true;
+        }
+        else
+        {
+            std::print(" {}", i);
+        }
+    }
+}
+
+
 int main(int argc, char **argv)
 {
     using namespace lexer;
@@ -22,11 +45,14 @@ int main(int argc, char **argv)
     }
 
     Lexer lexer = criar_lexer(std::move(argv[1]));
-    auto token = lexer.get_prox_token();
-    while(!std::holds_alternative<Eof>(token.get_token()))
+    std::vector<lexer::Token> tokens;
+    auto tok = lexer.get_prox_token();
+    while(!std::holds_alternative<Eof>(tok.get_token()))
     {
-        std::print("{}", token);
-        token = lexer.get_prox_token();
+        tokens.push_back(std::move(tok));
+        tok = lexer.get_prox_token();
     }
-    std::print("{}\n", token);
+    tokens.push_back(std::move(tok));
+    tokens.emplace_back(QuebraLinha { });
+    print_tokens(tokens);
 }
