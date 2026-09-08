@@ -1,1 +1,0 @@
-_uma_variavel_qualquer123213412412 = 20;

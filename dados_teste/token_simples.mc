@@ -1,1 +1,0 @@
-= // saida esperada (TK_ATRIBUICAO, =)
