@@ -37,28 +37,35 @@ impl<S: TScanner> Lexer<S> {
         Token::new(token_type, self.scanner.get_line(), lexeme.to_owned())
     }
 
-    fn match_equal(&mut self) -> Token {
+    fn match_optional_equal(
+        &mut self,
+        single_type: TokenType,
+        equal_type: TokenType,
+        single_lexeme: &str,
+        equal_lexeme: &str,
+    ) -> Token {
         if self.scanner.peek_next() != Some(b'=') {
-            return Token::new(TokenType::Assign, self.scanner.get_line(), "=".to_string());
+            return Token::new(
+                single_type,
+                self.scanner.get_line(),
+                single_lexeme.to_owned(),
+            );
         }
+
         self.discard_next();
-        Token::new(TokenType::Eq, self.scanner.get_line(), "==".to_string())
+        Token::new(equal_type, self.scanner.get_line(), equal_lexeme.to_owned())
+    }
+
+    fn match_equal(&mut self) -> Token {
+        self.match_optional_equal(TokenType::Assign, TokenType::Eq, "=", "==")
     }
 
     fn match_greater(&mut self) -> Token {
-        if self.scanner.peek_next() != Some(b'=') {
-            return Token::new(TokenType::Gt, self.scanner.get_line(), ">".to_string());
-        }
-        self.discard_next();
-        Token::new(TokenType::Geq, self.scanner.get_line(), ">=".to_string())
+        self.match_optional_equal(TokenType::Gt, TokenType::Geq, ">", ">=")
     }
 
     fn match_lesser(&mut self) -> Token {
-        if self.scanner.peek_next() != Some(b'=') {
-            return Token::new(TokenType::Lt, self.scanner.get_line(), "<".to_string());
-        }
-        self.discard_next();
-        Token::new(TokenType::Leq, self.scanner.get_line(), "<=".to_string())
+        self.match_optional_equal(TokenType::Lt, TokenType::Leq, "<", "<=")
     }
 }
 
