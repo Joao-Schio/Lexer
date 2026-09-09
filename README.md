@@ -19,6 +19,7 @@ The main engineering goals are:
 - Separation of Concerns
 - DRY where an abstraction genuinely improves the design
 - Ownership and RAII for resource management
+- Dependency Injection where it provides useful boundaries
 - Test-Driven Development
 - Strongly typed communication between compiler phases
 - Minimal unnecessary abstraction
@@ -102,15 +103,18 @@ AST
 Semantic Analysis
   |
   v
-Code Generation
+LLVM IR Generation
   |
   v
-x86-64 Assembly
+LLVM Toolchain
+  |
+  v
+Native Executable
 ```
 
-Compiler phases communicate through typed in-memory structures.
+Compiler phases communicate through typed in-memory structures rather than intermediate files.
 
-Intermediate representations such as token dumps, AST output, semantic information, IR, and generated assembly may eventually be exposed for debugging and inspection, but are not intended to serve as communication mechanisms between compiler stages.
+Representations such as token dumps, AST output, semantic information, and generated LLVM IR may be exposed through the CLI for debugging and inspection, but are not used as file-based communication mechanisms between compiler stages.
 
 ## Current Structure
 
@@ -257,6 +261,9 @@ A future V2 may add an additional backend targeting:
 - GNU/AT&T assembly syntax
 
 That backend would exist alongside the LLVM backend rather than replacing it.
+
+## Roadmap
+
 ### V1 — LLVM compiler
 
 - [x] Scanner foundation
@@ -275,6 +282,7 @@ That backend would exist alongside the LLVM backend rather than replacing it.
 - [ ] Stack-frame layout
 - [ ] Register and temporary-value strategy
 - [ ] GNU/AT&T assembly generation
+
 ## Design Philosophy
 
 A recurring rule for this project is:
