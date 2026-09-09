@@ -28,21 +28,27 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
+    fn discard_next(&mut self) {
+        let _ = self.scanner.get_next();
+    }
+
     fn single_char_token(&self, token_type: TokenType, lexeme: &str) -> Token {
         Token::new(token_type, self.scanner.get_line(), lexeme.to_owned())
     }
 
-    fn match_equal(&self) -> Token {
+    fn match_equal(&mut self) -> Token {
         if self.scanner.peek_next() != Some(b'=') {
             return Token::new(TokenType::Assign, self.scanner.get_line(), "=".to_string());
         }
+        self.discard_next();
         Token::new(TokenType::Eq, self.scanner.get_line(), "==".to_string())
     }
 
-    fn match_greater(&self) -> Token {
+    fn match_greater(&mut self) -> Token {
         if self.scanner.peek_next() != Some(b'=') {
             return Token::new(TokenType::Gt, self.scanner.get_line(), ">".to_string());
         }
+        self.discard_next();
         Token::new(TokenType::Geq, self.scanner.get_line(), ">=".to_string())
     }
 }
@@ -208,6 +214,34 @@ mod tests {
             assert_eq!(token.get_tok_type(), &TokenType::Geq);
             assert_eq!(token.get_lexema(), ">=");
         }
+
+        pub fn equality_consumes_equals<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("==+");
+
+            let equality = lexer.get_prox_token();
+            assert_eq!(equality.get_tok_type(), &TokenType::Eq);
+
+            let plus = lexer.get_prox_token();
+            assert_eq!(plus.get_tok_type(), &TokenType::Plus);
+        }
+
+        pub fn geq_consumes_equals<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer(">=+");
+
+            let equality = lexer.get_prox_token();
+            assert_eq!(equality.get_tok_type(), &TokenType::Geq);
+
+            let plus = lexer.get_prox_token();
+            assert_eq!(plus.get_tok_type(), &TokenType::Plus);
+        }
     }
 
     mod lexer_contract_tests {
@@ -250,6 +284,16 @@ mod tests {
         #[test]
         fn recognizes_greater_or_equal() {
             contract::recognizes_greater_or_eq(make_lexer);
+        }
+
+        #[test]
+        fn equality_consumes_equal() {
+            contract::equality_consumes_equals(make_lexer);
+        }
+
+        #[test]
+        fn geq_consumes_equals() {
+            contract::geq_consumes_equals(make_lexer);
         }
     }
 }
