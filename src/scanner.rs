@@ -4,11 +4,13 @@ pub trait TScanner {
     fn peek_next(&self) -> Option<u8>;
     fn get_next(&mut self) -> io::Result<Option<u8>>;
     fn get_line(&self) -> usize;
+    fn get_column(&self) -> usize;
 }
 
 pub struct Scanner<R: Read> {
     reader: BufReader<R>,
     line: usize,
+    column: usize,
     look_ahead: Option<u8>,
 }
 
@@ -19,6 +21,7 @@ impl<R: Read> Scanner<R> {
         Ok(Self {
             reader,
             line: 1,
+            column: 1,
             look_ahead,
         })
     }
@@ -47,6 +50,9 @@ where
         if let Some(byte) = current {
             if byte == b'\n' {
                 self.line += 1;
+                self.column = 1;
+            } else {
+                self.column += 1;
             }
             self.look_ahead = Self::read_next(&mut self.reader)?;
         }
@@ -56,6 +62,10 @@ where
 
     fn get_line(&self) -> usize {
         self.line
+    }
+
+    fn get_column(&self) -> usize {
+        self.column
     }
 }
 
@@ -203,6 +213,65 @@ mod tests {
 
             assert_eq!(scanner.get_line(), 1);
         }
+
+        pub fn column_starts_at_one<S>(scanner: S)
+        where
+            S: TScanner,
+        {
+            assert_eq!(scanner.get_column(), 1);
+        }
+
+        pub fn consuming_byte_increments_column<S>(mut scanner: S)
+        where
+            S: TScanner,
+        {
+            assert_eq!(scanner.get_column(), 1);
+
+            assert_eq!(scanner.get_next().unwrap(), Some(b'a'));
+            assert_eq!(scanner.get_column(), 2);
+
+            assert_eq!(scanner.get_next().unwrap(), Some(b'b'));
+            assert_eq!(scanner.get_column(), 3);
+        }
+
+        pub fn peek_does_not_increment_column<S>(scanner: S)
+        where
+            S: TScanner,
+        {
+            assert_eq!(scanner.get_column(), 1);
+
+            assert_eq!(scanner.peek_next(), Some(b'a'));
+            assert_eq!(scanner.peek_next(), Some(b'a'));
+
+            assert_eq!(scanner.get_column(), 1);
+        }
+
+        pub fn newline_resets_column<S>(mut scanner: S)
+        where
+            S: TScanner,
+        {
+            assert_eq!(scanner.get_next().unwrap(), Some(b'a'));
+            assert_eq!(scanner.get_column(), 2);
+
+            assert_eq!(scanner.get_next().unwrap(), Some(b'\n'));
+
+            assert_eq!(scanner.get_line(), 2);
+            assert_eq!(scanner.get_column(), 1);
+        }
+
+        pub fn columns_restart_after_newline<S>(mut scanner: S)
+        where
+            S: TScanner,
+        {
+            assert_eq!(scanner.get_next().unwrap(), Some(b'a'));
+            assert_eq!(scanner.get_next().unwrap(), Some(b'\n'));
+
+            assert_eq!(scanner.get_line(), 2);
+            assert_eq!(scanner.get_column(), 1);
+
+            assert_eq!(scanner.get_next().unwrap(), Some(b'b'));
+            assert_eq!(scanner.get_column(), 2);
+        }
     }
 
     fn scanner(input: &'static [u8]) -> Scanner<Cursor<&'static [u8]>> {
@@ -268,5 +337,30 @@ mod tests {
     #[test]
     fn scanner_get_line_before_scanning_line_break() {
         scanner_contract::get_line_before_scanning_line_break(scanner(b"hello\nmicro c"));
+    }
+
+    #[test]
+    fn scanner_column_starts_at_one() {
+        scanner_contract::column_starts_at_one(scanner(b"not important"));
+    }
+
+    #[test]
+    fn scanner_consuming_byte_increments_column() {
+        scanner_contract::consuming_byte_increments_column(scanner(b"ab"));
+    }
+
+    #[test]
+    fn scanner_peek_does_not_increment_column() {
+        scanner_contract::peek_does_not_increment_column(scanner(b"a"));
+    }
+
+    #[test]
+    fn scanner_newline_resets_column() {
+        scanner_contract::newline_resets_column(scanner(b"a\na"));
+    }
+
+    #[test]
+    fn scanner_columns_restart_after_newline() {
+        scanner_contract::columns_restart_after_newline(scanner(b"a\nb"));
     }
 }

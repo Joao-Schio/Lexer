@@ -22,12 +22,28 @@ impl<S: TScanner> Lexer<S> {
         match initial {
             b'+' => self.single_char_token(TokenType::Plus, "+"),
             b'-' => self.single_char_token(TokenType::Minus, "-"),
+            b'=' => self.match_equal(),
+            b'>' => self.match_greater(),
             _ => todo!(),
         }
     }
 
     fn single_char_token(&self, token_type: TokenType, lexeme: &str) -> Token {
         Token::new(token_type, self.scanner.get_line(), lexeme.to_owned())
+    }
+
+    fn match_equal(&self) -> Token {
+        if self.scanner.peek_next() != Some(b'=') {
+            return Token::new(TokenType::Assign, self.scanner.get_line(), "=".to_string());
+        }
+        Token::new(TokenType::Eq, self.scanner.get_line(), "==".to_string())
+    }
+
+    fn match_greater(&self) -> Token {
+        if self.scanner.peek_next() != Some(b'=') {
+            return Token::new(TokenType::Gt, self.scanner.get_line(), ">".to_string());
+        }
+        Token::new(TokenType::Geq, self.scanner.get_line(), ">=".to_string())
     }
 }
 
@@ -54,6 +70,7 @@ mod tests {
         input: Vec<u8>,
         position: usize,
         line: usize,
+        column: usize,
     }
 
     impl DummyScanner {
@@ -62,6 +79,7 @@ mod tests {
                 input: input.as_bytes().to_vec(),
                 position: 0,
                 line: 1,
+                column: 1,
             }
         }
     }
@@ -83,6 +101,10 @@ mod tests {
 
         fn peek_next(&self) -> Option<u8> {
             self.input.get(self.position).copied()
+        }
+
+        fn get_column(&self) -> usize {
+            self.column
         }
     }
 
@@ -114,6 +136,71 @@ mod tests {
             assert_eq!(token.get_tok_type(), &TokenType::Minus);
             assert_eq!(token.get_lexema(), "-");
         }
+
+        pub fn recognizes_simple_assignment<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("=");
+
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &TokenType::Assign);
+            assert_eq!(token.get_lexema(), "=");
+        }
+
+        pub fn recognizes_complex_assignment<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("=123"); // prox token deve ser assign
+
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &TokenType::Assign);
+            assert_eq!(token.get_lexema(), "=");
+        }
+
+        pub fn recognizes_equals<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("==");
+
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &TokenType::Eq);
+            assert_eq!(token.get_lexema(), "==");
+        }
+
+        pub fn recognizes_greater_than<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer(">");
+
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &TokenType::Gt);
+            assert_eq!(token.get_lexema(), ">");
+        }
+
+        pub fn recognizes_greater_or_eq<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer(">=");
+
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &TokenType::Geq);
+            assert_eq!(token.get_lexema(), ">=");
+        }
     }
 
     mod lexer_contract_tests {
@@ -131,6 +218,31 @@ mod tests {
         #[test]
         fn recognizes_minus() {
             contract::recognizes_minus(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_simple_assignment() {
+            contract::recognizes_simple_assignment(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_equals() {
+            contract::recognizes_equals(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_complex_assignment() {
+            contract::recognizes_complex_assignment(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_greater_than() {
+            contract::recognizes_greater_than(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_greater_or_equal() {
+            contract::recognizes_greater_or_eq(make_lexer);
         }
     }
 }
