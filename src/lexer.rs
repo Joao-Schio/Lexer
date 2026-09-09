@@ -25,6 +25,7 @@ impl<S: TScanner> Lexer<S> {
             b'=' => self.match_equal(),
             b'>' => self.match_greater(),
             b'<' => self.match_lesser(),
+            b'&' => self.match_and(),
             _ => todo!(),
         }
     }
@@ -66,6 +67,18 @@ impl<S: TScanner> Lexer<S> {
 
     fn match_lesser(&mut self) -> Token {
         self.match_optional_equal(TokenType::Lt, TokenType::Leq, "<", "<=")
+    }
+
+    fn match_and(&mut self) -> Token {
+        if self.scanner.peek_next() != Some(b'&') {
+            return Token::new(
+                TokenType::Undef,
+                self.scanner.get_line(),
+                "error".to_string(),
+            );
+        }
+        self.discard_next();
+        Token::new(TokenType::And, self.scanner.get_line(), "&&".to_string())
     }
 }
 
@@ -280,6 +293,27 @@ mod tests {
             assert_token(&mut lexer, TokenType::Lt, "<");
             assert_token(&mut lexer, TokenType::Plus, "+");
         }
+
+        pub fn recognizes_logical_and<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("&&");
+
+            assert_token(&mut lexer, TokenType::And, "&&");
+        }
+
+        pub fn logical_and_consumes_both_characters<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("&&+");
+
+            assert_token(&mut lexer, TokenType::And, "&&");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
     }
 
     mod lexer_contract_tests {
@@ -352,6 +386,16 @@ mod tests {
         #[test]
         fn less_than_does_not_consume_next() {
             contract::less_than_does_not_consume_next(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_logical_and() {
+            contract::recognizes_logical_and(make_lexer);
+        }
+
+        #[test]
+        fn logical_and_consumes_both_characters() {
+            contract::logical_and_consumes_both_characters(make_lexer);
         }
     }
 }
