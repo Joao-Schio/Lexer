@@ -71,11 +71,7 @@ impl<S: TScanner> Lexer<S> {
 
     fn match_and(&mut self) -> Token {
         if self.scanner.peek_next() != Some(b'&') {
-            return Token::new(
-                TokenType::Undef,
-                self.scanner.get_line(),
-                "error".to_string(),
-            );
+            return Token::new(TokenType::Undef, self.scanner.get_line(), "&".to_string());
         }
         self.discard_next();
         Token::new(TokenType::And, self.scanner.get_line(), "&&".to_string())
@@ -314,6 +310,16 @@ mod tests {
             assert_token(&mut lexer, TokenType::And, "&&");
             assert_token(&mut lexer, TokenType::Plus, "+");
         }
+
+        pub fn single_ampersand_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("&");
+
+            assert_token(&mut lexer, TokenType::Undef, "&");
+        }
     }
 
     mod lexer_contract_tests {
@@ -396,6 +402,11 @@ mod tests {
         #[test]
         fn logical_and_consumes_both_characters() {
             contract::logical_and_consumes_both_characters(make_lexer);
+        }
+
+        #[test]
+        fn single_ampersand_is_error() {
+            contract::single_ampersand_is_error(make_lexer);
         }
     }
 }
