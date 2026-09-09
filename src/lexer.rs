@@ -318,6 +318,17 @@ mod tests {
 
             assert_token(&mut lexer, TokenType::Undef, "&");
         }
+
+        pub fn invalid_ampersand_does_not_consume_next<F, L>(make_lexer: F)
+where
+    F: FnOnce(&str) -> L,
+    L: TLexer,
+{
+    let mut lexer = make_lexer("&+");
+
+    assert_token(&mut lexer, TokenType::Undef, "&");
+    assert_token(&mut lexer, TokenType::Plus, "+");
+}
     }
 
     mod lexer_contract_tests {
@@ -405,6 +416,11 @@ mod tests {
         #[test]
         fn single_ampersand_is_error() {
             contract::single_ampersand_is_error(make_lexer);
+        }
+
+        #[test]
+        fn invalid_ampersand_does_not_consume_next() {
+            contract::invalid_ampersand_does_not_consume_next(make_lexer);
         }
     }
 }
