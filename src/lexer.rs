@@ -147,10 +147,7 @@ mod tests {
         {
             let mut lexer = make_lexer("+");
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Plus);
-            assert_eq!(token.get_lexema(), "+");
+            assert_token(&mut lexer, TokenType::Plus, "+");
         }
 
         pub fn recognizes_minus<F, L>(make_lexer: F)
@@ -160,10 +157,7 @@ mod tests {
         {
             let mut lexer = make_lexer("-");
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Minus);
-            assert_eq!(token.get_lexema(), "-");
+            assert_token(&mut lexer, TokenType::Minus, "-");
         }
 
         pub fn recognizes_simple_assignment<F, L>(make_lexer: F)
@@ -173,10 +167,7 @@ mod tests {
         {
             let mut lexer = make_lexer("=");
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Assign);
-            assert_eq!(token.get_lexema(), "=");
+            assert_token(&mut lexer, TokenType::Assign, "=");
         }
 
         pub fn recognizes_complex_assignment<F, L>(make_lexer: F)
@@ -186,10 +177,7 @@ mod tests {
         {
             let mut lexer = make_lexer("=123"); // prox token deve ser assign
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Assign);
-            assert_eq!(token.get_lexema(), "=");
+            assert_token(&mut lexer, TokenType::Assign, "=");
         }
 
         pub fn recognizes_equals<F, L>(make_lexer: F)
@@ -199,10 +187,7 @@ mod tests {
         {
             let mut lexer = make_lexer("==");
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Eq);
-            assert_eq!(token.get_lexema(), "==");
+            assert_token(&mut lexer, TokenType::Eq, "==");
         }
 
         pub fn recognizes_greater_than<F, L>(make_lexer: F)
@@ -212,10 +197,7 @@ mod tests {
         {
             let mut lexer = make_lexer(">");
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Gt);
-            assert_eq!(token.get_lexema(), ">");
+            assert_token(&mut lexer, TokenType::Gt, ">");
         }
 
         pub fn recognizes_greater_or_eq<F, L>(make_lexer: F)
@@ -225,10 +207,7 @@ mod tests {
         {
             let mut lexer = make_lexer(">=");
 
-            let token = lexer.get_prox_token();
-
-            assert_eq!(token.get_tok_type(), &TokenType::Geq);
-            assert_eq!(token.get_lexema(), ">=");
+            assert_token(&mut lexer, TokenType::Geq, ">=");
         }
 
         pub fn equality_consumes_equals<F, L>(make_lexer: F)
@@ -238,11 +217,8 @@ mod tests {
         {
             let mut lexer = make_lexer("==+");
 
-            let equality = lexer.get_prox_token();
-            assert_eq!(equality.get_tok_type(), &TokenType::Eq);
-
-            let plus = lexer.get_prox_token();
-            assert_eq!(plus.get_tok_type(), &TokenType::Plus);
+            assert_token(&mut lexer, TokenType::Eq, "==");
+            assert_token(&mut lexer, TokenType::Plus, "+");
         }
 
         pub fn geq_consumes_equals<F, L>(make_lexer: F)
@@ -252,11 +228,8 @@ mod tests {
         {
             let mut lexer = make_lexer(">=+");
 
-            let equality = lexer.get_prox_token();
-            assert_eq!(equality.get_tok_type(), &TokenType::Geq);
-
-            let plus = lexer.get_prox_token();
-            assert_eq!(plus.get_tok_type(), &TokenType::Plus);
+            assert_token(&mut lexer, TokenType::Geq, ">=");
+            assert_token(&mut lexer, TokenType::Plus, "+");
         }
 
         pub fn recognizes_less_than<F, L>(make_lexer: F)
