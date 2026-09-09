@@ -53,11 +53,7 @@ impl<S: TScanner> Lexer<S> {
         }
 
         self.discard_next();
-        Token::new(
-            equal_type,
-            self.scanner.get_line(),
-            equal_lexeme.to_owned(),
-        )
+        Token::new(equal_type, self.scanner.get_line(), equal_lexeme.to_owned())
     }
 
     fn match_equal(&mut self) -> Token {
