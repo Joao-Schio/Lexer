@@ -92,8 +92,15 @@ mod tests {
         fn get_next(&mut self) -> std::io::Result<Option<u8>> {
             let value = self.peek_next();
 
-            if value.is_some() {
+            if let Some(byte) = value {
                 self.position += 1;
+
+                if byte == b'\n' {
+                    self.line += 1;
+                    self.column = 1;
+                } else {
+                    self.column += 1;
+                }
             }
 
             Ok(value)
