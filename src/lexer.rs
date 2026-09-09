@@ -24,12 +24,13 @@ impl<S: TScanner> Lexer<S> {
             b'-' => self.single_char_token(TokenType::Minus, "-"),
             b'=' => self.match_equal(),
             b'>' => self.match_greater(),
+            b'<' => self.match_lesser(),
             _ => todo!(),
         }
     }
 
     fn discard_next(&mut self) {
-        let _ = self.scanner.get_next();
+        let _ = self.scanner.get_next().expect("IO Error detected");
     }
 
     fn single_char_token(&self, token_type: TokenType, lexeme: &str) -> Token {
@@ -50,6 +51,14 @@ impl<S: TScanner> Lexer<S> {
         }
         self.discard_next();
         Token::new(TokenType::Geq, self.scanner.get_line(), ">=".to_string())
+    }
+
+    fn match_lesser(&mut self) -> Token {
+        if self.scanner.peek_next() != Some(b'=') {
+            return Token::new(TokenType::Lt, self.scanner.get_line(), "<".to_string());
+        }
+        self.discard_next();
+        Token::new(TokenType::Leq, self.scanner.get_line(), "<=".to_string())
     }
 }
 
@@ -123,6 +132,13 @@ mod tests {
 
     mod contract {
         use super::*;
+
+        fn assert_token<L: TLexer>(lexer: &mut L, expected_type: TokenType, expected_lexeme: &str) {
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &expected_type);
+            assert_eq!(token.get_lexema(), expected_lexeme);
+        }
 
         pub fn recognizes_plus<F, L>(make_lexer: F)
         where
@@ -242,6 +258,48 @@ mod tests {
             let plus = lexer.get_prox_token();
             assert_eq!(plus.get_tok_type(), &TokenType::Plus);
         }
+
+        pub fn recognizes_less_than<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("<");
+
+            assert_token(&mut lexer, TokenType::Lt, "<");
+        }
+
+        pub fn recognizes_less_or_equal<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("<=");
+
+            assert_token(&mut lexer, TokenType::Leq, "<=");
+        }
+
+        pub fn leq_consumes_equals<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("<=+");
+
+            assert_token(&mut lexer, TokenType::Leq, "<=");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
+
+        pub fn less_than_does_not_consume_next<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("<+");
+
+            assert_token(&mut lexer, TokenType::Lt, "<");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
     }
 
     mod lexer_contract_tests {
@@ -294,6 +352,26 @@ mod tests {
         #[test]
         fn geq_consumes_equals() {
             contract::geq_consumes_equals(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_less_than() {
+            contract::recognizes_less_than(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_less_or_equal() {
+            contract::recognizes_less_or_equal(make_lexer);
+        }
+
+        #[test]
+        fn leq_consumes_equals() {
+            contract::leq_consumes_equals(make_lexer);
+        }
+
+        #[test]
+        fn less_than_does_not_consume_next() {
+            contract::less_than_does_not_consume_next(make_lexer);
         }
     }
 }
