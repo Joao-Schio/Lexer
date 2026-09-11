@@ -28,10 +28,26 @@ impl<S: TScanner> Lexer<S> {
             b'!' => self.match_not(),
             b'"' => self.match_quotes(),
             b'\'' => self.match_single_quote(),
+            b',' => self.single_char_token(TokenType::Comma, ","),
+            b';' => self.single_char_token(TokenType::SemiColon, ";"),
+            b'(' => self.single_char_token(TokenType::Lparen, "("),
+            b')' => self.single_char_token(TokenType::Rparen, ")"),
+            b'{' => self.single_char_token(TokenType::LBrace, "{"),
+            b'}' => self.single_char_token(TokenType::RBrace, "}"),
+            b'[' => self.single_char_token(TokenType::LBracket, "["),
+            b']' => self.single_char_token(TokenType::RBracket, "]"),
+            b'a'..=b'z' => self.match_id_token(),
+            b'A'..=b'Z' => self.match_id_token(),
             _ => todo!(),
         }
     }
+
+    fn match_id_token(&mut self) -> Token {
+        todo!();
+    }
+
     fn match_single_quote(&mut self) -> Token {
+        self.discard_next();
         let line = self.scanner.get_line();
 
         let Some(byte) = self.scanner.get_next().expect("I/O error") else {
@@ -60,7 +76,8 @@ impl<S: TScanner> Lexer<S> {
         let _ = self.scanner.get_next().expect("IO Error detected");
     }
 
-    fn single_char_token(&self, token_type: TokenType, lexeme: &str) -> Token {
+    fn single_char_token(&mut self, token_type: TokenType, lexeme: &str) -> Token {
+        self.discard_next();
         Token::new(token_type, self.scanner.get_line(), lexeme.to_owned())
     }
 
@@ -71,6 +88,7 @@ impl<S: TScanner> Lexer<S> {
         single_lexeme: &str,
         equal_lexeme: &str,
     ) -> Token {
+        self.discard_next();
         if self.scanner.peek_next() != Some(b'=') {
             return Token::new(
                 single_type,
@@ -114,6 +132,7 @@ impl<S: TScanner> Lexer<S> {
         single_lexeme: &str,
         pair_lexeme: &str,
     ) -> Token {
+        self.discard_next();
         if self.scanner.peek_next() != Some(expected) {
             return Token::new(
                 TokenType::Undef,
@@ -128,6 +147,7 @@ impl<S: TScanner> Lexer<S> {
     }
 
     fn match_quotes(&mut self) -> Token {
+        self.discard_next();
         let line = self.scanner.get_line();
         let mut buffer = String::new();
 
@@ -149,11 +169,8 @@ impl<S: TScanner> Lexer<S> {
 
 impl<S: TScanner> TLexer for Lexer<S> {
     fn get_prox_token(&mut self) -> Token {
-        let initial = self
-            .scanner
-            .get_next()
-            .expect("Io failed")
-            .expect("EOF handling later");
+        let initial = self.scanner.peek_next().expect("Io failed");
+
         return self.lex_token(initial);
     }
 }
@@ -601,6 +618,19 @@ mod tests {
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
+
+        pub fn recognizes_single_char_token<F, L>(
+            make_lexer: F,
+            input: &str,
+            expected_type: TokenType,
+        ) where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer(input);
+
+            assert_token(&mut lexer, expected_type, input);
+        }
     }
 
     mod lexer_contract_tests {
@@ -772,6 +802,46 @@ mod tests {
         #[test]
         fn newline_in_string_const_is_error() {
             contract::newline_in_string_const_is_error(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_comma() {
+            contract::recognizes_single_char_token(make_lexer, ",", TokenType::Comma);
+        }
+
+        #[test]
+        fn recognizes_semicolon() {
+            contract::recognizes_single_char_token(make_lexer, ";", TokenType::SemiColon);
+        }
+
+        #[test]
+        fn recognizes_left_parenthesis() {
+            contract::recognizes_single_char_token(make_lexer, "(", TokenType::Lparen);
+        }
+
+        #[test]
+        fn recognizes_right_parenthesis() {
+            contract::recognizes_single_char_token(make_lexer, ")", TokenType::Rparen);
+        }
+
+        #[test]
+        fn recognizes_left_brace() {
+            contract::recognizes_single_char_token(make_lexer, "{", TokenType::LBrace);
+        }
+
+        #[test]
+        fn recognizes_right_brace() {
+            contract::recognizes_single_char_token(make_lexer, "}", TokenType::RBrace);
+        }
+
+        #[test]
+        fn recognizes_left_bracket() {
+            contract::recognizes_single_char_token(make_lexer, "[", TokenType::LBracket);
+        }
+
+        #[test]
+        fn recognizes_right_bracket() {
+            contract::recognizes_single_char_token(make_lexer, "]", TokenType::RBracket);
         }
     }
 }
