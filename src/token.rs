@@ -1,8 +1,8 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     IntegerConst(i64),
-    CharConst(char),
-    StringConst(String),
+    CharConst,
+    StringConst,
     Undef,
     Id,
     Eof,

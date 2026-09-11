@@ -1,6 +1,9 @@
 use crate::{
     scanner::TScanner,
-    token::{Token, TokenType},
+    token::{
+        Token,
+        TokenType::{self, Undef},
+    },
 };
 
 pub trait TLexer {
@@ -26,10 +29,36 @@ impl<S: TScanner> Lexer<S> {
             b'&' => self.match_and(),
             b'|' => self.match_or(),
             b'!' => self.match_not(),
+            b'"' => self.match_quotes(),
+            b'\'' => self.match_single_quote(),
             _ => todo!(),
         }
     }
+    fn match_single_quote(&mut self) -> Token {
+        let line = self.scanner.get_line();
 
+        let Some(byte) = self.scanner.get_next().expect("I/O error") else {
+            return Token::new(TokenType::Undef, line, "'".into());
+        };
+
+        if byte == b'\'' || byte == b'\n' {
+            return Token::new(TokenType::Undef, line, format!("'{}", byte as char));
+        }
+
+        let character = byte as char;
+
+        match self.scanner.get_next().expect("I/O error") {
+            Some(b'\'') => Token::new(TokenType::CharConst, line, character.to_string()),
+
+            Some(next) => Token::new(
+                TokenType::Undef,
+                line,
+                format!("'{character}{}", next as char),
+            ),
+
+            None => Token::new(TokenType::Undef, line, format!("'{character}")),
+        }
+    }
     fn discard_next(&mut self) {
         let _ = self.scanner.get_next().expect("IO Error detected");
     }
@@ -99,6 +128,25 @@ impl<S: TScanner> Lexer<S> {
         self.discard_next();
 
         Token::new(token_type, self.scanner.get_line(), pair_lexeme.to_owned())
+    }
+
+    fn match_quotes(&mut self) -> Token {
+        let line = self.scanner.get_line();
+        let mut buffer = String::new();
+
+        loop {
+            match self.scanner.get_next().expect("IO Error detected") {
+                Some(b'"') => {
+                    return Token::new(TokenType::StringConst, line, buffer);
+                }
+
+                Some(b'\n') | None => {
+                    return Token::new(TokenType::Undef, line, buffer);
+                }
+
+                Some(c) => buffer.push(c as char),
+            }
+        }
     }
 }
 
@@ -417,6 +465,145 @@ mod tests {
             assert_token(&mut lexer, TokenType::Neq, "!=");
             assert_token(&mut lexer, TokenType::Plus, "+");
         }
+        fn assert_token_type<L: TLexer>(lexer: &mut L, expected_type: TokenType) {
+            let token = lexer.get_prox_token();
+
+            assert_eq!(token.get_tok_type(), &expected_type);
+        }
+
+        pub fn recognizes_char_const<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("a");
+
+            assert_token(&mut lexer, TokenType::CharConst, "a");
+        }
+
+        pub fn recognizes_symbol_char_const<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("'+'");
+
+            assert_token(&mut lexer, TokenType::CharConst, "'+'");
+        }
+
+        pub fn char_const_consumes_closing_quote<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("'a'+");
+
+            assert_token(&mut lexer, TokenType::CharConst, "a");
+
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
+
+        pub fn unterminated_char_const_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("'a");
+
+            assert_token_type(&mut lexer, TokenType::Undef);
+        }
+
+        pub fn empty_char_const_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("''");
+
+            assert_token_type(&mut lexer, TokenType::Undef);
+        }
+
+        pub fn multiple_character_char_const_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("'ab'");
+
+            assert_token_type(&mut lexer, TokenType::Undef);
+        }
+
+        pub fn newline_in_char_const_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("'\n'");
+
+            assert_token_type(&mut lexer, TokenType::Undef);
+        }
+
+        pub fn recognizes_string_const<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("\"hello\"");
+
+            assert_token(&mut lexer, TokenType::StringConst, "\"hello\"");
+        }
+
+        pub fn recognizes_empty_string_const<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("\"\"");
+
+            assert_token(&mut lexer, TokenType::StringConst, "\"\"");
+        }
+
+        pub fn recognizes_string_const_with_symbols<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("\"123 !@#$%\"");
+
+            assert_token(&mut lexer, TokenType::StringConst, "123 !@#$%");
+        }
+
+        pub fn string_const_consumes_closing_quote<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("\"hello\"+");
+
+            assert_token(&mut lexer, TokenType::StringConst, "\"hello\"");
+
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
+
+        pub fn unterminated_string_const_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("\"hello");
+
+            assert_token_type(&mut lexer, TokenType::Undef);
+        }
+
+        pub fn newline_in_string_const_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("\"hello\nworld\"");
+
+            assert_token_type(&mut lexer, TokenType::Undef);
+        }
     }
 
     mod lexer_contract_tests {
@@ -524,6 +711,70 @@ mod tests {
         #[test]
         fn recognizes_not_equal() {
             contract::recognizes_not_equal(make_lexer);
+        }
+        #[test]
+        fn recognizes_char_const() {
+            contract::recognizes_char_const(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_symbol_char_const() {
+            contract::recognizes_symbol_char_const(make_lexer);
+        }
+
+        #[test]
+        fn char_const_consumes_closing_quote() {
+            contract::char_const_consumes_closing_quote(make_lexer);
+        }
+
+        #[test]
+        fn unterminated_char_const_is_error() {
+            contract::unterminated_char_const_is_error(make_lexer);
+        }
+
+        #[test]
+        fn empty_char_const_is_error() {
+            contract::empty_char_const_is_error(make_lexer);
+        }
+
+        #[test]
+        fn multiple_character_char_const_is_error() {
+            contract::multiple_character_char_const_is_error(make_lexer);
+        }
+
+        #[test]
+        fn newline_in_char_const_is_error() {
+            contract::newline_in_char_const_is_error(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_string_const() {
+            contract::recognizes_string_const(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_empty_string_const() {
+            contract::recognizes_empty_string_const(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_string_const_with_symbols() {
+            contract::recognizes_string_const_with_symbols(make_lexer);
+        }
+
+        #[test]
+        fn string_const_consumes_closing_quote() {
+            contract::string_const_consumes_closing_quote(make_lexer);
+        }
+
+        #[test]
+        fn unterminated_string_const_is_error() {
+            contract::unterminated_string_const_is_error(make_lexer);
+        }
+
+        #[test]
+        fn newline_in_string_const_is_error() {
+            contract::newline_in_string_const_is_error(make_lexer);
         }
     }
 }
