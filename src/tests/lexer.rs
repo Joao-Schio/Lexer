@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::token::TokenType;
+use crate::{lexer::LexerError, token::TokenType};
 
 use super::helpers::{
-    assert_lexer_error, assert_token, assert_token_type, make_lexer, make_lexer_with_reserved_words,
+    assert_lexer_error, assert_token, make_failing_lexer, make_lexer, make_lexer_with_reserved_words,
 };
 
 fn assert_single_char_token(input: &str, expected_type: TokenType) {
@@ -107,13 +107,29 @@ fn logical_and_consumes_both_characters() {
 #[test]
 fn single_ampersand_is_error() {
     let mut lexer = make_lexer("&");
-    assert_token(&mut lexer, TokenType::Undef, "&");
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(
+        error,
+        LexerError::InvalidLogicalOperator {
+            character: b'&',
+            ..
+        }
+    ));
 }
 
 #[test]
 fn invalid_ampersand_does_not_consume_next() {
     let mut lexer = make_lexer("&+");
-    assert_token(&mut lexer, TokenType::Undef, "&");
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(
+        error,
+        LexerError::InvalidLogicalOperator {
+            character: b'&',
+            ..
+        }
+    ));
     assert_token(&mut lexer, TokenType::Plus, "+");
 }
 
@@ -121,6 +137,42 @@ fn invalid_ampersand_does_not_consume_next() {
 fn recognizes_logical_or() {
     let mut lexer = make_lexer("||");
     assert_token(&mut lexer, TokenType::Or, "||");
+}
+
+#[test]
+fn logical_or_consumes_both_characters() {
+    let mut lexer = make_lexer("||+");
+    assert_token(&mut lexer, TokenType::Or, "||");
+    assert_token(&mut lexer, TokenType::Plus, "+");
+}
+
+#[test]
+fn single_pipe_is_error() {
+    let mut lexer = make_lexer("|");
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(
+        error,
+        LexerError::InvalidLogicalOperator {
+            character: b'|',
+            ..
+        }
+    ));
+}
+
+#[test]
+fn invalid_pipe_does_not_consume_next() {
+    let mut lexer = make_lexer("|+");
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(
+        error,
+        LexerError::InvalidLogicalOperator {
+            character: b'|',
+            ..
+        }
+    ));
+    assert_token(&mut lexer, TokenType::Plus, "+");
 }
 
 #[test]
@@ -157,25 +209,33 @@ fn char_const_consumes_closing_quote() {
 #[test]
 fn unterminated_char_const_is_error() {
     let mut lexer = make_lexer("'a");
-    let _ = assert_lexer_error(&mut lexer);
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::InvalidCharacterLiteral { .. }));
 }
 
 #[test]
 fn empty_char_const_is_error() {
     let mut lexer = make_lexer("''");
-    let _ = assert_lexer_error(&mut lexer);
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::InvalidCharacterLiteral { .. }));
 }
 
 #[test]
 fn multiple_character_char_const_is_error() {
     let mut lexer = make_lexer("'ab'");
-    let _ = assert_lexer_error(&mut lexer);
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::InvalidCharacterLiteral { .. }));
 }
 
 #[test]
 fn newline_in_char_const_is_error() {
     let mut lexer = make_lexer("'\n'");
-    let _ = assert_lexer_error(&mut lexer);
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::InvalidCharacterLiteral { .. }));
 }
 
 #[test]
@@ -206,13 +266,17 @@ fn string_const_consumes_closing_quote() {
 #[test]
 fn unterminated_string_const_is_error() {
     let mut lexer = make_lexer("\"hello");
-    assert_token_type(&mut lexer, TokenType::Undef);
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::UnterminatedString { .. }));
 }
 
 #[test]
 fn newline_in_string_const_is_error() {
     let mut lexer = make_lexer("\"hello\nworld\"");
-    assert_token_type(&mut lexer, TokenType::Undef);
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::UnterminatedString { .. }));
 }
 
 #[test]
@@ -302,4 +366,46 @@ fn identifier_does_not_consume_following_token() {
     let mut lexer = make_lexer("value+");
     assert_token(&mut lexer, TokenType::Id, "value");
     assert_token(&mut lexer, TokenType::Plus, "+");
+}
+
+#[test]
+fn unexpected_character_is_error() {
+    let mut lexer = make_lexer("@");
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(
+        error,
+        LexerError::UnexpectedCharacter {
+            character: b'@',
+            ..
+        }
+    ));
+}
+
+#[test]
+fn empty_input_returns_eof() {
+    let mut lexer = make_lexer("");
+    assert_token(&mut lexer, TokenType::Eof, "");
+}
+
+#[test]
+fn eof_follows_last_token() {
+    let mut lexer = make_lexer("+");
+    assert_token(&mut lexer, TokenType::Plus, "+");
+    assert_token(&mut lexer, TokenType::Eof, "");
+}
+
+#[test]
+fn repeated_eof_is_stable() {
+    let mut lexer = make_lexer("");
+    assert_token(&mut lexer, TokenType::Eof, "");
+    assert_token(&mut lexer, TokenType::Eof, "");
+}
+
+#[test]
+fn scanner_error_is_propagated() {
+    let mut lexer = make_failing_lexer();
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::Scanner(_)));
 }
