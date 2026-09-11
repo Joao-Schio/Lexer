@@ -242,26 +242,6 @@ mod tests {
             assert_eq!(token.get_lexema(), expected_lexeme);
         }
 
-        pub fn recognizes_plus<F, L>(make_lexer: F)
-        where
-            F: FnOnce(&str) -> L,
-            L: TLexer,
-        {
-            let mut lexer = make_lexer("+");
-
-            assert_token(&mut lexer, TokenType::Plus, "+");
-        }
-
-        pub fn recognizes_minus<F, L>(make_lexer: F)
-        where
-            F: FnOnce(&str) -> L,
-            L: TLexer,
-        {
-            let mut lexer = make_lexer("-");
-
-            assert_token(&mut lexer, TokenType::Minus, "-");
-        }
-
         pub fn recognizes_simple_assignment<F, L>(make_lexer: F)
         where
             F: FnOnce(&str) -> L,
@@ -642,12 +622,12 @@ mod tests {
 
         #[test]
         fn recognizes_plus() {
-            contract::recognizes_plus(make_lexer);
+            contract::recognizes_single_char_token(make_lexer, "+", TokenType::Plus);
         }
 
         #[test]
         fn recognizes_minus() {
-            contract::recognizes_minus(make_lexer);
+            contract::recognizes_single_char_token(make_lexer, "-", TokenType::Minus);
         }
 
         #[test]
