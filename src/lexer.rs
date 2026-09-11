@@ -23,11 +23,11 @@ impl<S: TScanner> Lexer<S> {
     }
 
     fn discard_comment(&mut self) {
-        while let Some(c) = self.scanner.get_next().expect("Io Error") {
+        while let Some(c) = self.scanner.peek_next() {
+            self.discard_next();
             if c == b'\n' {
                 break;
             }
-            self.discard_next();
         }
     }
 
@@ -38,6 +38,7 @@ impl<S: TScanner> Lexer<S> {
                 return None;
             }
             let initial = initial.unwrap();
+            let debug = (initial as char).to_string();
             if initial.is_ascii_whitespace() {
                 continue;
             }
