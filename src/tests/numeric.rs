@@ -1,6 +1,6 @@
-use crate::token::TokenType;
+use crate::{lexer::LexerError, token::TokenType};
 
-use super::helpers::{assert_token, make_lexer};
+use super::helpers::{assert_lexer_error, assert_token, make_lexer};
 
 #[test]
 fn recognizes_zero() {
@@ -52,4 +52,12 @@ fn negative_value_is_minus_followed_by_integer() {
     let mut lexer = make_lexer("-123");
     assert_token(&mut lexer, TokenType::Minus, "-");
     assert_token(&mut lexer, TokenType::IntegerConst(123), "123");
+}
+
+#[test]
+fn integer_out_of_range_is_error() {
+    let mut lexer = make_lexer("9223372036854775808");
+    let error = assert_lexer_error(&mut lexer);
+
+    assert!(matches!(error, LexerError::IntegerOutOfRange { .. }));
 }

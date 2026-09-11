@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    lexer::{Lexer, TLexer},
+    lexer::{Lexer, LexerError, TLexer},
     scanner::{ScannerError, TScanner},
     token::TokenType,
 };
@@ -71,14 +71,25 @@ pub(super) fn assert_token<L: TLexer>(
     expected_type: TokenType,
     expected_lexeme: &str,
 ) {
-    let token = lexer.get_prox_token();
+    let token = lexer
+        .get_prox_token()
+        .unwrap_or_else(|error| panic!("expected token, got lexer error: {error:?}"));
 
     assert_eq!(token.get_tok_type(), &expected_type);
     assert_eq!(token.get_lexema(), expected_lexeme);
 }
 
 pub(super) fn assert_token_type<L: TLexer>(lexer: &mut L, expected_type: TokenType) {
-    let token = lexer.get_prox_token();
+    let token = lexer
+        .get_prox_token()
+        .unwrap_or_else(|error| panic!("expected token, got lexer error: {error:?}"));
 
     assert_eq!(token.get_tok_type(), &expected_type);
+}
+
+pub(super) fn assert_lexer_error<L: TLexer>(lexer: &mut L) -> LexerError {
+    match lexer.get_prox_token() {
+        Err(error) => error,
+        Ok(_) => panic!("expected lexer error, got a token"),
+    }
 }
