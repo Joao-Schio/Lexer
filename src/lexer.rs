@@ -227,7 +227,7 @@ impl<S: TScanner> Lexer<S> {
     }
 
     fn match_numeric(&mut self, initial: u8) -> Token {
-        let mut buffer = String::new();
+        let mut buffer = String::from(initial as char);
         let linha = self.scanner.get_line();
         while let Some(next) = self.scanner.peek_next() {
             buffer.push(next as char);
