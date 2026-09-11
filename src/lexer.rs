@@ -22,12 +22,41 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
+    fn discard_comment(&mut self) {
+        while let Some(c) = self.scanner.get_next().expect("Io Error") {
+            if c == b'\n' {
+                break;
+            }
+            self.discard_next();
+        }
+    }
+
+    fn get_next_meaningful_char(&mut self) -> Option<u8> {
+        loop {
+            let initial = self.scanner.get_next().expect("Io error");
+            if initial.is_none() {
+                return None;
+            }
+            let initial = initial.unwrap();
+            if initial.is_ascii_whitespace() {
+                continue;
+            }
+            if initial == b'/' && self.scanner.peek_next() == Some(b'/') {
+                self.discard_next();
+                self.discard_comment();
+                continue;
+            }
+            return Some(initial);
+        }
+    }
+
     fn lex_token(&mut self, initial: u8) -> Token {
         match initial {
             b'+' => self.single_char_token(TokenType::Plus, "+"),
             b'-' => self.single_char_token(TokenType::Minus, "-"),
             b'*' => self.single_char_token(TokenType::Mul, "*"),
             b'%' => self.single_char_token(TokenType::Mod, "%"),
+            b'/' => self.single_char_token(TokenType::Div, "/"),
             b'=' => self.match_equal(),
             b'>' => self.match_greater(),
             b'<' => self.match_lesser(),
@@ -49,17 +78,22 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
+    fn is_allowed_identifier_character(character: u8) -> bool {
+        match character {
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'0'..=b'9' => true,
+            _ => false,
+        }
+    }
+
     fn match_letters_tokens(&mut self, initial: u8) -> Token {
         let mut id = String::from(initial as char);
-        loop {
-            if let Some(next) = self.scanner.get_next().expect("Io error") {
-                if next == b'\n' {
-                    break;
-                }
-                id.push(next as char);
-            } else {
+        while let Some(next) = self.scanner.peek_next() {
+            if !Self::is_allowed_identifier_character(next) {
                 break;
             }
+
+            self.discard_next();
+            id.push(next as char);
         }
         let tipo = self
             .reserved_words
@@ -188,12 +222,7 @@ impl<S: TScanner> Lexer<S> {
 
 impl<S: TScanner> TLexer for Lexer<S> {
     fn get_prox_token(&mut self) -> Token {
-        let initial = self
-            .scanner
-            .get_next()
-            .expect("Io failed")
-            .expect("EOF handling later");
-
+        let initial = self.get_next_meaningful_char().expect("eof handling later");
         self.lex_token(initial)
     }
 }
@@ -624,6 +653,52 @@ mod tests {
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
+        pub fn recognizes_identifier<F, L>(make_lexer: F, input: &str)
+        where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer(input, None);
+
+            assert_token(&mut lexer, TokenType::Id, input);
+        }
+
+        pub fn recognizes_reserved_word<F, L>(
+            make_lexer: F,
+            input: &'static str,
+            expected_type: TokenType,
+        ) where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let reserved_words = HashMap::from([(input, expected_type)]);
+            let mut lexer = make_lexer(input, Some(reserved_words));
+
+            assert_token(&mut lexer, expected_type, input);
+        }
+
+        pub fn reserved_word_match_is_exact<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let reserved_words = HashMap::from([("if", TokenType::If)]);
+            let mut lexer = make_lexer("ifx", Some(reserved_words));
+
+            assert_token(&mut lexer, TokenType::Id, "ifx");
+        }
+
+        pub fn identifier_does_not_consume_following_token<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("value+", None);
+
+            assert_token(&mut lexer, TokenType::Id, "value");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
+
         pub fn recognizes_single_char_token<F, L>(
             make_lexer: F,
             input: &str,
@@ -853,6 +928,46 @@ mod tests {
         #[test]
         fn recognizes_right_bracket() {
             contract::recognizes_single_char_token(make_lexer, "]", TokenType::RBracket);
+        }
+
+        #[test]
+        fn recognizes_mul() {
+            contract::recognizes_single_char_token(make_lexer, "*", TokenType::Mul);
+        }
+
+        #[test]
+        fn recognizes_mod() {
+            contract::recognizes_single_char_token(make_lexer, "%", TokenType::Mod);
+        }
+
+        #[test]
+        fn recognizes_identifier() {
+            contract::recognizes_identifier(make_lexer, "value");
+        }
+
+        #[test]
+        fn recognizes_identifier_with_uppercase_digits_and_underscore() {
+            contract::recognizes_identifier(make_lexer, "Value_123");
+        }
+
+        #[test]
+        fn recognizes_identifier_starting_with_underscore() {
+            contract::recognizes_identifier(make_lexer, "_value");
+        }
+
+        #[test]
+        fn recognizes_injected_reserved_word() {
+            contract::recognizes_reserved_word(make_lexer, "if", TokenType::If);
+        }
+
+        #[test]
+        fn reserved_word_match_is_exact() {
+            contract::reserved_word_match_is_exact(make_lexer);
+        }
+
+        #[test]
+        fn identifier_does_not_consume_following_token() {
+            contract::identifier_does_not_consume_following_token(make_lexer);
         }
     }
 }
