@@ -24,6 +24,8 @@ impl<S: TScanner> Lexer<S> {
             b'>' => self.match_greater(),
             b'<' => self.match_lesser(),
             b'&' => self.match_and(),
+            b'|' => self.match_or(),
+            b'!' => self.match_not(),
             _ => todo!(),
         }
     }
@@ -67,12 +69,36 @@ impl<S: TScanner> Lexer<S> {
         self.match_optional_equal(TokenType::Lt, TokenType::Leq, "<", "<=")
     }
 
+    fn match_not(&mut self) -> Token {
+        self.match_optional_equal(TokenType::Not, TokenType::Neq, "!", "!=")
+    }
+
     fn match_and(&mut self) -> Token {
-        if self.scanner.peek_next() != Some(b'&') {
-            return Token::new(TokenType::Undef, self.scanner.get_line(), "&".to_string());
+        self.match_required_pair(b'&', TokenType::And, "&", "&&")
+    }
+
+    fn match_or(&mut self) -> Token {
+        self.match_required_pair(b'|', TokenType::Or, "|", "||")
+    }
+
+    fn match_required_pair(
+        &mut self,
+        expected: u8,
+        token_type: TokenType,
+        single_lexeme: &str,
+        pair_lexeme: &str,
+    ) -> Token {
+        if self.scanner.peek_next() != Some(expected) {
+            return Token::new(
+                TokenType::Undef,
+                self.scanner.get_line(),
+                single_lexeme.to_owned(),
+            );
         }
+
         self.discard_next();
-        Token::new(TokenType::And, self.scanner.get_line(), "&&".to_string())
+
+        Token::new(token_type, self.scanner.get_line(), pair_lexeme.to_owned())
     }
 }
 
@@ -329,6 +355,68 @@ mod tests {
             assert_token(&mut lexer, TokenType::Undef, "&");
             assert_token(&mut lexer, TokenType::Plus, "+");
         }
+
+        pub fn recognizes_logical_or<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("||");
+
+            assert_token(&mut lexer, TokenType::Or, "||");
+        }
+
+        pub fn single_pipe_is_error<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("|");
+
+            assert_token(&mut lexer, TokenType::Undef, "|");
+        }
+
+        pub fn invalid_pipe_does_not_consume_next<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("|+");
+
+            assert_token(&mut lexer, TokenType::Undef, "|");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
+
+        pub fn recognizes_not<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("!");
+
+            assert_token(&mut lexer, TokenType::Not, "!");
+        }
+
+        pub fn recognizes_not_equal<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("!=");
+
+            assert_token(&mut lexer, TokenType::Neq, "!=");
+        }
+
+        pub fn neq_consumes_equal<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("!=+");
+
+            assert_token(&mut lexer, TokenType::Neq, "!=");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
     }
 
     mod lexer_contract_tests {
@@ -421,6 +509,21 @@ mod tests {
         #[test]
         fn invalid_ampersand_does_not_consume_next() {
             contract::invalid_ampersand_does_not_consume_next(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_logical_or() {
+            contract::recognizes_logical_or(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_not() {
+            contract::recognizes_not(make_lexer);
+        }
+
+        #[test]
+        fn recognizes_not_equal() {
+            contract::recognizes_not_equal(make_lexer);
         }
     }
 }
