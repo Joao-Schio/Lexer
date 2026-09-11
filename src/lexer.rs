@@ -58,17 +58,13 @@ impl<S: TScanner> Lexer<S> {
 
     fn match_letters_tokens(&mut self, initial: u8) -> Token {
         let mut id = String::from(initial as char);
-        loop {
-            if let Some(next) = self.scanner.peek_next() {
-                if Self::is_allowed_identifier_character(next) {
-                    self.discard_next();
-                    id.push(next as char);
-                } else {
-                    break;
-                }
-            } else {
+        while let Some(next) = self.scanner.peek_next() {
+            if !Self::is_allowed_identifier_character(next) {
                 break;
             }
+
+            self.discard_next();
+            id.push(next as char);
         }
         let tipo = self
             .reserved_words
