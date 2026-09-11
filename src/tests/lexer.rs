@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use crate::token::TokenType;
 
-use super::helpers::{assert_token, assert_token_type, make_lexer, make_lexer_with_reserved_words};
+use super::helpers::{
+    assert_lexer_error, assert_token, assert_token_type, make_lexer, make_lexer_with_reserved_words,
+};
 
 fn assert_single_char_token(input: &str, expected_type: TokenType) {
     let mut lexer = make_lexer(input);
@@ -155,25 +157,25 @@ fn char_const_consumes_closing_quote() {
 #[test]
 fn unterminated_char_const_is_error() {
     let mut lexer = make_lexer("'a");
-    assert_token_type(&mut lexer, TokenType::Undef);
+    let _ = assert_lexer_error(&mut lexer);
 }
 
 #[test]
 fn empty_char_const_is_error() {
     let mut lexer = make_lexer("''");
-    assert_token_type(&mut lexer, TokenType::Undef);
+    let _ = assert_lexer_error(&mut lexer);
 }
 
 #[test]
 fn multiple_character_char_const_is_error() {
     let mut lexer = make_lexer("'ab'");
-    assert_token_type(&mut lexer, TokenType::Undef);
+    let _ = assert_lexer_error(&mut lexer);
 }
 
 #[test]
 fn newline_in_char_const_is_error() {
     let mut lexer = make_lexer("'\n'");
-    assert_token_type(&mut lexer, TokenType::Undef);
+    let _ = assert_lexer_error(&mut lexer);
 }
 
 #[test]
