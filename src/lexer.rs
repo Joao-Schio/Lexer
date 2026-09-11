@@ -38,7 +38,6 @@ impl<S: TScanner> Lexer<S> {
                 return None;
             }
             let initial = initial.unwrap();
-            let debug = (initial as char).to_string();
             if initial.is_ascii_whitespace() {
                 continue;
             }
