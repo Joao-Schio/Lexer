@@ -3,7 +3,6 @@ pub enum TokenType {
     IntegerConst(i64),
     CharConst,
     StringConst,
-    Undef,
     Id,
     Eof,
     Plus,
