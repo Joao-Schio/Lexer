@@ -902,8 +902,8 @@ mod tests {
         }
 
         #[test]
-        fn recognizes_div() {
-            contract::recognizes_single_char_token(make_lexer, "/", TokenType::Div);
+        fn recognizes_mul() {
+            contract::recognizes_single_char_token(make_lexer, "*", TokenType::Mul);
         }
 
         #[test]
