@@ -624,6 +624,52 @@ mod tests {
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
+        pub fn recognizes_identifier<F, L>(make_lexer: F, input: &str)
+        where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer(input, None);
+
+            assert_token(&mut lexer, TokenType::Id, input);
+        }
+
+        pub fn recognizes_reserved_word<F, L>(
+            make_lexer: F,
+            input: &'static str,
+            expected_type: TokenType,
+        ) where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let reserved_words = HashMap::from([(input, expected_type)]);
+            let mut lexer = make_lexer(input, Some(reserved_words));
+
+            assert_token(&mut lexer, expected_type, input);
+        }
+
+        pub fn reserved_word_match_is_exact<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let reserved_words = HashMap::from([("if", TokenType::If)]);
+            let mut lexer = make_lexer("ifx", Some(reserved_words));
+
+            assert_token(&mut lexer, TokenType::Id, "ifx");
+        }
+
+        pub fn identifier_does_not_consume_following_token<F, L>(make_lexer: F)
+        where
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
+            L: TLexer,
+        {
+            let mut lexer = make_lexer("value+", None);
+
+            assert_token(&mut lexer, TokenType::Id, "value");
+            assert_token(&mut lexer, TokenType::Plus, "+");
+        }
+
         pub fn recognizes_single_char_token<F, L>(
             make_lexer: F,
             input: &str,
@@ -853,6 +899,46 @@ mod tests {
         #[test]
         fn recognizes_right_bracket() {
             contract::recognizes_single_char_token(make_lexer, "]", TokenType::RBracket);
+        }
+
+        #[test]
+        fn recognizes_div() {
+            contract::recognizes_single_char_token(make_lexer, "/", TokenType::Div);
+        }
+
+        #[test]
+        fn recognizes_mod() {
+            contract::recognizes_single_char_token(make_lexer, "%", TokenType::Mod);
+        }
+
+        #[test]
+        fn recognizes_identifier() {
+            contract::recognizes_identifier(make_lexer, "value");
+        }
+
+        #[test]
+        fn recognizes_identifier_with_uppercase_digits_and_underscore() {
+            contract::recognizes_identifier(make_lexer, "Value_123");
+        }
+
+        #[test]
+        fn recognizes_identifier_starting_with_underscore() {
+            contract::recognizes_identifier(make_lexer, "_value");
+        }
+
+        #[test]
+        fn recognizes_injected_reserved_word() {
+            contract::recognizes_reserved_word(make_lexer, "if", TokenType::If);
+        }
+
+        #[test]
+        fn reserved_word_match_is_exact() {
+            contract::reserved_word_match_is_exact(make_lexer);
+        }
+
+        #[test]
+        fn identifier_does_not_consume_following_token() {
+            contract::identifier_does_not_consume_following_token(make_lexer);
         }
     }
 }
