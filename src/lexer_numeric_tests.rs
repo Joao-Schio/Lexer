@@ -84,11 +84,7 @@ fn recognizes_nine() {
 fn recognizes_multi_digit_integer() {
     let mut lexer = make_lexer("12341235");
 
-    assert_token(
-        &mut lexer,
-        TokenType::IntegerConst(12_341_235),
-        "12341235",
-    );
+    assert_token(&mut lexer, TokenType::IntegerConst(12_341_235), "12341235");
 }
 
 #[test]
