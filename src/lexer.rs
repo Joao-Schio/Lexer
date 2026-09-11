@@ -1,9 +1,6 @@
 use crate::{
     scanner::TScanner,
-    token::{
-        Token,
-        TokenType::{self, Undef},
-    },
+    token::{Token, TokenType},
 };
 
 pub trait TLexer {
@@ -476,7 +473,7 @@ mod tests {
             F: FnOnce(&str) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("a");
+            let mut lexer = make_lexer("'a'");
 
             assert_token(&mut lexer, TokenType::CharConst, "a");
         }
@@ -488,7 +485,7 @@ mod tests {
         {
             let mut lexer = make_lexer("'+'");
 
-            assert_token(&mut lexer, TokenType::CharConst, "'+'");
+            assert_token(&mut lexer, TokenType::CharConst, "+");
         }
 
         pub fn char_const_consumes_closing_quote<F, L>(make_lexer: F)
@@ -550,7 +547,7 @@ mod tests {
         {
             let mut lexer = make_lexer("\"hello\"");
 
-            assert_token(&mut lexer, TokenType::StringConst, "\"hello\"");
+            assert_token(&mut lexer, TokenType::StringConst, "hello");
         }
 
         pub fn recognizes_empty_string_const<F, L>(make_lexer: F)
@@ -560,7 +557,7 @@ mod tests {
         {
             let mut lexer = make_lexer("\"\"");
 
-            assert_token(&mut lexer, TokenType::StringConst, "\"\"");
+            assert_token(&mut lexer, TokenType::StringConst, "");
         }
 
         pub fn recognizes_string_const_with_symbols<F, L>(make_lexer: F)
@@ -580,7 +577,7 @@ mod tests {
         {
             let mut lexer = make_lexer("\"hello\"+");
 
-            assert_token(&mut lexer, TokenType::StringConst, "\"hello\"");
+            assert_token(&mut lexer, TokenType::StringConst, "hello");
 
             assert_token(&mut lexer, TokenType::Plus, "+");
         }
