@@ -22,12 +22,41 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
+    fn discard_comment(&mut self) {
+        while let Some(c) = self.scanner.get_next().expect("Io Error") {
+            if c == b'\n' {
+                break;
+            }
+            self.discard_next();
+        }
+    }
+
+    fn get_next_meaningful_char(&mut self) -> Option<u8> {
+        loop {
+            let initial = self.scanner.get_next().expect("Io error");
+            if initial.is_none() {
+                return None;
+            }
+            let initial = initial.unwrap();
+            if initial.is_ascii_whitespace() {
+                continue;
+            }
+            if initial == b'/' && self.scanner.peek_next() == Some(b'/') {
+                self.discard_next();
+                self.discard_comment();
+                continue;
+            }
+            return Some(initial);
+        }
+    }
+
     fn lex_token(&mut self, initial: u8) -> Token {
         match initial {
             b'+' => self.single_char_token(TokenType::Plus, "+"),
             b'-' => self.single_char_token(TokenType::Minus, "-"),
             b'*' => self.single_char_token(TokenType::Mul, "*"),
             b'%' => self.single_char_token(TokenType::Mod, "%"),
+            b'/' => self.single_char_token(TokenType::Div, "/"),
             b'=' => self.match_equal(),
             b'>' => self.match_greater(),
             b'<' => self.match_lesser(),
@@ -193,12 +222,7 @@ impl<S: TScanner> Lexer<S> {
 
 impl<S: TScanner> TLexer for Lexer<S> {
     fn get_prox_token(&mut self) -> Token {
-        let initial = self
-            .scanner
-            .get_next()
-            .expect("Io failed")
-            .expect("EOF handling later");
-
+        let initial = self.get_next_meaningful_char().expect("eof handling later");
         self.lex_token(initial)
     }
 }
