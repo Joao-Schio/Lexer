@@ -85,7 +85,6 @@ impl<S: TScanner> Lexer<S> {
             _ => false,
         }
     }
-
     fn is_allowed_numeric_character(character: u8) -> bool {
         match character {
             b'0'..=b'9' => true,
@@ -127,15 +126,16 @@ impl<S: TScanner> Lexer<S> {
 
         match self.scanner.get_next().expect("I/O error") {
             Some(b'\'') => Token::new(TokenType::CharConst, line, character.to_string()),
+
             Some(next) => Token::new(
                 TokenType::Undef,
                 line,
                 format!("'{character}{}", next as char),
             ),
+
             None => Token::new(TokenType::Undef, line, format!("'{character}")),
         }
     }
-
     fn discard_next(&mut self) {
         let _ = self.scanner.get_next().expect("IO Error detected");
     }
@@ -203,6 +203,7 @@ impl<S: TScanner> Lexer<S> {
         }
 
         self.discard_next();
+
         Token::new(token_type, self.scanner.get_line(), pair_lexeme.to_owned())
     }
 
@@ -212,8 +213,14 @@ impl<S: TScanner> Lexer<S> {
 
         loop {
             match self.scanner.get_next().expect("IO Error detected") {
-                Some(b'"') => return Token::new(TokenType::StringConst, line, buffer),
-                Some(b'\n') | None => return Token::new(TokenType::Undef, line, buffer),
+                Some(b'"') => {
+                    return Token::new(TokenType::StringConst, line, buffer);
+                }
+
+                Some(b'\n') | None => {
+                    return Token::new(TokenType::Undef, line, buffer);
+                }
+
                 Some(c) => buffer.push(c as char),
             }
         }
