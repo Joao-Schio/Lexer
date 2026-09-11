@@ -36,18 +36,18 @@ impl<S: TScanner> Lexer<S> {
             b'}' => self.single_char_token(TokenType::RBrace, "}"),
             b'[' => self.single_char_token(TokenType::LBracket, "["),
             b']' => self.single_char_token(TokenType::RBracket, "]"),
-            b'a'..=b'z' => self.match_id_token(),
-            b'A'..=b'Z' => self.match_id_token(),
+            b'a'..=b'z' => self.match_id_token(initial),
+            b'A'..=b'Z' => self.match_id_token(initial),
             _ => todo!(),
         }
     }
 
-    fn match_id_token(&mut self) -> Token {
+    fn match_id_token(&mut self, initial: u8) -> Token {
+        let _ = initial;
         todo!();
     }
 
     fn match_single_quote(&mut self) -> Token {
-        self.discard_next();
         let line = self.scanner.get_line();
 
         let Some(byte) = self.scanner.get_next().expect("I/O error") else {
@@ -76,8 +76,7 @@ impl<S: TScanner> Lexer<S> {
         let _ = self.scanner.get_next().expect("IO Error detected");
     }
 
-    fn single_char_token(&mut self, token_type: TokenType, lexeme: &str) -> Token {
-        self.discard_next();
+    fn single_char_token(&self, token_type: TokenType, lexeme: &str) -> Token {
         Token::new(token_type, self.scanner.get_line(), lexeme.to_owned())
     }
 
@@ -88,7 +87,6 @@ impl<S: TScanner> Lexer<S> {
         single_lexeme: &str,
         equal_lexeme: &str,
     ) -> Token {
-        self.discard_next();
         if self.scanner.peek_next() != Some(b'=') {
             return Token::new(
                 single_type,
@@ -132,7 +130,6 @@ impl<S: TScanner> Lexer<S> {
         single_lexeme: &str,
         pair_lexeme: &str,
     ) -> Token {
-        self.discard_next();
         if self.scanner.peek_next() != Some(expected) {
             return Token::new(
                 TokenType::Undef,
@@ -147,7 +144,6 @@ impl<S: TScanner> Lexer<S> {
     }
 
     fn match_quotes(&mut self) -> Token {
-        self.discard_next();
         let line = self.scanner.get_line();
         let mut buffer = String::new();
 
@@ -169,9 +165,13 @@ impl<S: TScanner> Lexer<S> {
 
 impl<S: TScanner> TLexer for Lexer<S> {
     fn get_prox_token(&mut self) -> Token {
-        let initial = self.scanner.peek_next().expect("Io failed");
+        let initial = self
+            .scanner
+            .get_next()
+            .expect("Io failed")
+            .expect("EOF handling later");
 
-        return self.lex_token(initial);
+        self.lex_token(initial)
     }
 }
 
