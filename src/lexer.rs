@@ -74,7 +74,7 @@ impl<S: TScanner> Lexer<S> {
             b'[' => self.single_char_token(TokenType::LBracket, "["),
             b']' => self.single_char_token(TokenType::RBracket, "]"),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.match_letters_tokens(initial),
-            b'0'..b'9' => self.match_numeric(initial),
+            b'0'..=b'9' => self.match_numeric(initial),
             _ => todo!(),
         }
     }
@@ -229,14 +229,16 @@ impl<S: TScanner> Lexer<S> {
     fn match_numeric(&mut self, initial: u8) -> Token {
         let mut buffer = String::from(initial as char);
         let linha = self.scanner.get_line();
+
         while let Some(next) = self.scanner.peek_next() {
-            buffer.push(next as char);
-            if Self::is_allowed_numeric_character(next) {
-                self.discard_next();
-            } else {
-                return Token::new(TokenType::Undef, linha, buffer);
+            if !Self::is_allowed_numeric_character(next) {
+                break;
             }
+
+            self.discard_next();
+            buffer.push(next as char);
         }
+
         Token::new(
             TokenType::IntegerConst(buffer.parse().unwrap()),
             linha,
