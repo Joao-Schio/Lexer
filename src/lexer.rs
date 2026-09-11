@@ -49,14 +49,23 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
+    fn is_allowed_identifier_character(character: u8) -> bool {
+        match character {
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'0'..=b'9' => true,
+            _ => false,
+        }
+    }
+
     fn match_letters_tokens(&mut self, initial: u8) -> Token {
         let mut id = String::from(initial as char);
         loop {
-            if let Some(next) = self.scanner.get_next().expect("Io error") {
-                if next == b'\n' {
+            if let Some(next) = self.scanner.peek_next() {
+                if Self::is_allowed_identifier_character(next) {
+                    self.discard_next();
+                    id.push(next as char);
+                } else {
                     break;
                 }
-                id.push(next as char);
             } else {
                 break;
             }
