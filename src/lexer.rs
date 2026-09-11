@@ -23,11 +23,11 @@ impl<S: TScanner> Lexer<S> {
     }
 
     fn discard_comment(&mut self) {
-        while let Some(c) = self.scanner.get_next().expect("Io Error") {
+        while let Some(c) = self.scanner.peek_next() {
+            self.discard_next();
             if c == b'\n' {
                 break;
             }
-            self.discard_next();
         }
     }
 
