@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::{lexer::LexerError, token::TokenType};
 
 use super::helpers::{
-    assert_lexer_error, assert_token, make_failing_lexer, make_lexer, make_lexer_with_reserved_words,
+    assert_lexer_error, assert_token, make_failing_lexer, make_lexer,
+    make_lexer_with_reserved_words,
 };
 
 fn assert_single_char_token(input: &str, expected_type: TokenType) {
