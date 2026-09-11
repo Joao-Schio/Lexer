@@ -1,12 +1,51 @@
 use std::collections::HashMap;
 
 use crate::{
-    scanner::TScanner,
+    scanner::{ScannerError, TScanner},
     token::{Token, TokenType},
 };
 
+#[derive(Debug)]
+pub enum LexerError {
+    Scanner(ScannerError),
+
+    UnexpectedCharacter {
+        character: u8,
+        line: usize,
+        column: usize,
+    },
+
+    InvalidCharacterLiteral {
+        line: usize,
+        column: usize,
+    },
+
+    UnterminatedString {
+        line: usize,
+        column: usize,
+    },
+
+    InvalidLogicalOperator {
+        character: u8,
+        line: usize,
+        column: usize,
+    },
+
+    IntegerOutOfRange {
+        lexeme: String,
+        line: usize,
+        column: usize,
+    },
+}
+
+impl From<ScannerError> for LexerError {
+    fn from(error: ScannerError) -> Self {
+        Self::Scanner(error)
+    }
+}
+
 pub trait TLexer {
-    fn get_prox_token(&mut self) -> Token;
+    fn get_prox_token(&mut self) -> Result<Token, LexerError>;
 }
 
 pub struct Lexer<S: TScanner> {
@@ -50,30 +89,30 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
-    fn lex_token(&mut self, initial: u8) -> Token {
+    fn lex_token(&mut self, initial: u8) -> Result<Token, LexerError> {
         match initial {
-            b'+' => self.single_char_token(TokenType::Plus, "+"),
-            b'-' => self.single_char_token(TokenType::Minus, "-"),
-            b'*' => self.single_char_token(TokenType::Mul, "*"),
-            b'%' => self.single_char_token(TokenType::Mod, "%"),
-            b'/' => self.single_char_token(TokenType::Div, "/"),
-            b'=' => self.match_equal(),
-            b'>' => self.match_greater(),
-            b'<' => self.match_lesser(),
-            b'&' => self.match_and(),
-            b'|' => self.match_or(),
-            b'!' => self.match_not(),
-            b'"' => self.match_quotes(),
+            b'+' => Ok(self.single_char_token(TokenType::Plus, "+")),
+            b'-' => Ok(self.single_char_token(TokenType::Minus, "-")),
+            b'*' => Ok(self.single_char_token(TokenType::Mul, "*")),
+            b'%' => Ok(self.single_char_token(TokenType::Mod, "%")),
+            b'/' => Ok(self.single_char_token(TokenType::Div, "/")),
+            b'=' => Ok(self.match_equal()),
+            b'>' => Ok(self.match_greater()),
+            b'<' => Ok(self.match_lesser()),
+            b'&' => Ok(self.match_and()),
+            b'|' => Ok(self.match_or()),
+            b'!' => Ok(self.match_not()),
+            b'"' => Ok(self.match_quotes()),
             b'\'' => self.match_single_quote(),
-            b',' => self.single_char_token(TokenType::Comma, ","),
-            b';' => self.single_char_token(TokenType::SemiColon, ";"),
-            b'(' => self.single_char_token(TokenType::Lparen, "("),
-            b')' => self.single_char_token(TokenType::Rparen, ")"),
-            b'{' => self.single_char_token(TokenType::LBrace, "{"),
-            b'}' => self.single_char_token(TokenType::RBrace, "}"),
-            b'[' => self.single_char_token(TokenType::LBracket, "["),
-            b']' => self.single_char_token(TokenType::RBracket, "]"),
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.match_letters_tokens(initial),
+            b',' => Ok(self.single_char_token(TokenType::Comma, ",")),
+            b';' => Ok(self.single_char_token(TokenType::SemiColon, ";")),
+            b'(' => Ok(self.single_char_token(TokenType::Lparen, "(")),
+            b')' => Ok(self.single_char_token(TokenType::Rparen, ")")),
+            b'{' => Ok(self.single_char_token(TokenType::LBrace, "{")),
+            b'}' => Ok(self.single_char_token(TokenType::RBrace, "}")),
+            b'[' => Ok(self.single_char_token(TokenType::LBracket, "[")),
+            b']' => Ok(self.single_char_token(TokenType::RBracket, "]")),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => Ok(self.match_letters_tokens(initial)),
             b'0'..=b'9' => self.match_numeric(initial),
             _ => todo!(),
         }
@@ -111,29 +150,32 @@ impl<S: TScanner> Lexer<S> {
         Token::new(tipo, self.scanner.get_line(), id)
     }
 
-    fn match_single_quote(&mut self) -> Token {
+    fn match_single_quote(&mut self) -> Result<Token, LexerError> {
         let line = self.scanner.get_line();
+        let column = self.scanner.get_column();
 
-        let Some(byte) = self.scanner.get_next().expect("I/O error") else {
-            return Token::new(TokenType::Undef, line, "'".into());
+        let Some(byte) = self.scanner.get_next()? else {
+            return Err(LexerError::InvalidCharacterLiteral { line, column });
         };
 
         if byte == b'\'' || byte == b'\n' {
-            return Token::new(TokenType::Undef, line, format!("'{}", byte as char));
+            return Err(LexerError::InvalidCharacterLiteral { line, column });
         }
 
         let character = byte as char;
 
-        match self.scanner.get_next().expect("I/O error") {
-            Some(b'\'') => Token::new(TokenType::CharConst, line, character.to_string()),
-
-            Some(next) => Token::new(
-                TokenType::Undef,
+        match self.scanner.get_next()? {
+            Some(b'\'') => Ok(Token::new(
+                TokenType::CharConst,
                 line,
-                format!("'{character}{}", next as char),
-            ),
-
-            None => Token::new(TokenType::Undef, line, format!("'{character}")),
+                character.to_string(),
+            )),
+            Some(next) => Err(LexerError::UnexpectedCharacter {
+                character: next,
+                line,
+                column,
+            }),
+            None => Err(LexerError::UnterminatedString { line, column }),
         }
     }
     fn discard_next(&mut self) {
@@ -226,7 +268,7 @@ impl<S: TScanner> Lexer<S> {
         }
     }
 
-    fn match_numeric(&mut self, initial: u8) -> Token {
+    fn match_numeric(&mut self, initial: u8) -> Result<Token, LexerError> {
         let mut buffer = String::from(initial as char);
         let linha = self.scanner.get_line();
 
@@ -238,18 +280,21 @@ impl<S: TScanner> Lexer<S> {
             self.discard_next();
             buffer.push(next as char);
         }
+        let integer = buffer
+            .parse::<i64>()
+            .map_err(|_| LexerError::IntegerOutOfRange {
+                lexeme: buffer.clone(),
+                line: self.scanner.get_line(),
+                column: self.scanner.get_column(),
+            });
 
-        Token::new(
-            TokenType::IntegerConst(buffer.parse().unwrap()),
-            linha,
-            buffer,
-        )
+        Ok(Token::new(TokenType::IntegerConst(integer?), linha, buffer))
     }
 }
 
 impl<S: TScanner> TLexer for Lexer<S> {
-    fn get_prox_token(&mut self) -> Token {
+    fn get_prox_token(&mut self) -> Result<Token, LexerError> {
         let initial = self.get_next_meaningful_char().expect("eof handling later");
-        self.lex_token(initial)
+        Ok(self.lex_token(initial)?)
     }
 }

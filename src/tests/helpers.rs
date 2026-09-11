@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     lexer::{Lexer, TLexer},
-    scanner::TScanner,
+    scanner::{ScannerError, TScanner},
     token::TokenType,
 };
 
@@ -29,7 +29,7 @@ impl TScanner for DummyScanner {
         self.line
     }
 
-    fn get_next(&mut self) -> std::io::Result<Option<u8>> {
+    fn get_next(&mut self) -> Result<Option<u8>, ScannerError> {
         let value = self.peek_next();
 
         if let Some(byte) = value {

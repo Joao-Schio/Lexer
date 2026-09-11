@@ -1,8 +1,39 @@
-use std::io::{self, BufReader, Read};
+use core::fmt;
+use std::{
+    error::Error,
+    io::{self, BufReader, Read},
+};
+
+#[derive(Debug)]
+pub enum ScannerError {
+    Io(io::Error),
+}
+
+impl fmt::Display for ScannerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(error) => write!(f, "scanner I/O error: {error}"),
+        }
+    }
+}
+
+impl Error for ScannerError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Io(error) => Some(error),
+        }
+    }
+}
+
+impl From<io::Error> for ScannerError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
 
 pub trait TScanner {
     fn peek_next(&self) -> Option<u8>;
-    fn get_next(&mut self) -> io::Result<Option<u8>>;
+    fn get_next(&mut self) -> Result<Option<u8>, ScannerError>;
     fn get_line(&self) -> usize;
     fn get_column(&self) -> usize;
 }
@@ -44,7 +75,7 @@ where
         self.look_ahead
     }
 
-    fn get_next(&mut self) -> io::Result<Option<u8>> {
+    fn get_next(&mut self) -> Result<Option<u8>, ScannerError> {
         let current = self.look_ahead;
 
         if let Some(byte) = current {
