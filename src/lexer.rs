@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     scanner::TScanner,
     token::{Token, TokenType},
@@ -9,17 +11,23 @@ pub trait TLexer {
 
 pub struct Lexer<S: TScanner> {
     scanner: S,
+    reserved_words: HashMap<&'static str, TokenType>,
 }
 
 impl<S: TScanner> Lexer<S> {
-    pub fn new(scanner: S) -> Self {
-        Self { scanner }
+    pub fn new(scanner: S, reserved_words: HashMap<&'static str, TokenType>) -> Self {
+        Self {
+            scanner,
+            reserved_words,
+        }
     }
 
     fn lex_token(&mut self, initial: u8) -> Token {
         match initial {
             b'+' => self.single_char_token(TokenType::Plus, "+"),
             b'-' => self.single_char_token(TokenType::Minus, "-"),
+            b'*' => self.single_char_token(TokenType::Mul, "*"),
+            b'%' => self.single_char_token(TokenType::Mod, "%"),
             b'=' => self.match_equal(),
             b'>' => self.match_greater(),
             b'<' => self.match_lesser(),
@@ -36,15 +44,30 @@ impl<S: TScanner> Lexer<S> {
             b'}' => self.single_char_token(TokenType::RBrace, "}"),
             b'[' => self.single_char_token(TokenType::LBracket, "["),
             b']' => self.single_char_token(TokenType::RBracket, "]"),
-            b'a'..=b'z' => self.match_id_token(initial),
-            b'A'..=b'Z' => self.match_id_token(initial),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.match_letters_tokens(initial),
             _ => todo!(),
         }
     }
 
-    fn match_id_token(&mut self, initial: u8) -> Token {
-        let _ = initial;
-        todo!();
+    fn match_letters_tokens(&mut self, initial: u8) -> Token {
+        let mut id = String::from(initial as char);
+        loop {
+            if let Some(next) = self.scanner.get_next().expect("Io error") {
+                if next == b'\n' {
+                    break;
+                }
+                id.push(next as char);
+            } else {
+                break;
+            }
+        }
+        let tipo = self
+            .reserved_words
+            .get(id.as_str())
+            .copied()
+            .unwrap_or(TokenType::Id);
+
+        Token::new(tipo, self.scanner.get_line(), id)
     }
 
     fn match_single_quote(&mut self) -> Token {
@@ -233,6 +256,8 @@ mod tests {
     }
 
     mod contract {
+        use std::collections::HashMap;
+
         use super::*;
 
         fn assert_token<L: TLexer>(lexer: &mut L, expected_type: TokenType, expected_lexeme: &str) {
@@ -244,60 +269,60 @@ mod tests {
 
         pub fn recognizes_simple_assignment<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("=");
+            let mut lexer = make_lexer("=", None);
 
             assert_token(&mut lexer, TokenType::Assign, "=");
         }
 
         pub fn recognizes_complex_assignment<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("=123"); // prox token deve ser assign
+            let mut lexer = make_lexer("=123", None); // prox token deve ser assign
 
             assert_token(&mut lexer, TokenType::Assign, "=");
         }
 
         pub fn recognizes_equals<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("==");
+            let mut lexer = make_lexer("==", None);
 
             assert_token(&mut lexer, TokenType::Eq, "==");
         }
 
         pub fn recognizes_greater_than<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer(">");
+            let mut lexer = make_lexer(">", None);
 
             assert_token(&mut lexer, TokenType::Gt, ">");
         }
 
         pub fn recognizes_greater_or_eq<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer(">=");
+            let mut lexer = make_lexer(">=", None);
 
             assert_token(&mut lexer, TokenType::Geq, ">=");
         }
 
         pub fn equality_consumes_equals<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("==+");
+            let mut lexer = make_lexer("==+", None);
 
             assert_token(&mut lexer, TokenType::Eq, "==");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -305,10 +330,10 @@ mod tests {
 
         pub fn geq_consumes_equals<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer(">=+");
+            let mut lexer = make_lexer(">=+", None);
 
             assert_token(&mut lexer, TokenType::Geq, ">=");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -316,30 +341,30 @@ mod tests {
 
         pub fn recognizes_less_than<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("<");
+            let mut lexer = make_lexer("<", None);
 
             assert_token(&mut lexer, TokenType::Lt, "<");
         }
 
         pub fn recognizes_less_or_equal<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("<=");
+            let mut lexer = make_lexer("<=", None);
 
             assert_token(&mut lexer, TokenType::Leq, "<=");
         }
 
         pub fn leq_consumes_equals<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("<=+");
+            let mut lexer = make_lexer("<=+", None);
 
             assert_token(&mut lexer, TokenType::Leq, "<=");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -347,10 +372,10 @@ mod tests {
 
         pub fn less_than_does_not_consume_next<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("<+");
+            let mut lexer = make_lexer("<+", None);
 
             assert_token(&mut lexer, TokenType::Lt, "<");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -358,20 +383,20 @@ mod tests {
 
         pub fn recognizes_logical_and<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("&&");
+            let mut lexer = make_lexer("&&", None);
 
             assert_token(&mut lexer, TokenType::And, "&&");
         }
 
         pub fn logical_and_consumes_both_characters<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("&&+");
+            let mut lexer = make_lexer("&&+", None);
 
             assert_token(&mut lexer, TokenType::And, "&&");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -379,20 +404,20 @@ mod tests {
 
         pub fn single_ampersand_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("&");
+            let mut lexer = make_lexer("&", None);
 
             assert_token(&mut lexer, TokenType::Undef, "&");
         }
 
         pub fn invalid_ampersand_does_not_consume_next<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("&+");
+            let mut lexer = make_lexer("&+", None);
 
             assert_token(&mut lexer, TokenType::Undef, "&");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -400,30 +425,30 @@ mod tests {
 
         pub fn recognizes_logical_or<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("||");
+            let mut lexer = make_lexer("||", None);
 
             assert_token(&mut lexer, TokenType::Or, "||");
         }
 
         pub fn single_pipe_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("|");
+            let mut lexer = make_lexer("|", None);
 
             assert_token(&mut lexer, TokenType::Undef, "|");
         }
 
         pub fn invalid_pipe_does_not_consume_next<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("|+");
+            let mut lexer = make_lexer("|+", None);
 
             assert_token(&mut lexer, TokenType::Undef, "|");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -431,30 +456,30 @@ mod tests {
 
         pub fn recognizes_not<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("!");
+            let mut lexer = make_lexer("!", None);
 
             assert_token(&mut lexer, TokenType::Not, "!");
         }
 
         pub fn recognizes_not_equal<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("!=");
+            let mut lexer = make_lexer("!=", None);
 
             assert_token(&mut lexer, TokenType::Neq, "!=");
         }
 
         pub fn neq_consumes_equal<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("!=+");
+            let mut lexer = make_lexer("!=+", None);
 
             assert_token(&mut lexer, TokenType::Neq, "!=");
             assert_token(&mut lexer, TokenType::Plus, "+");
@@ -467,30 +492,30 @@ mod tests {
 
         pub fn recognizes_char_const<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("'a'");
+            let mut lexer = make_lexer("'a'", None);
 
             assert_token(&mut lexer, TokenType::CharConst, "a");
         }
 
         pub fn recognizes_symbol_char_const<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("'+'");
+            let mut lexer = make_lexer("'+'", None);
 
             assert_token(&mut lexer, TokenType::CharConst, "+");
         }
 
         pub fn char_const_consumes_closing_quote<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("'a'+");
+            let mut lexer = make_lexer("'a'+", None);
 
             assert_token(&mut lexer, TokenType::CharConst, "a");
 
@@ -499,80 +524,80 @@ mod tests {
 
         pub fn unterminated_char_const_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("'a");
+            let mut lexer = make_lexer("'a", None);
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
         pub fn empty_char_const_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("''");
+            let mut lexer = make_lexer("''", None);
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
         pub fn multiple_character_char_const_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("'ab'");
+            let mut lexer = make_lexer("'ab'", None);
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
         pub fn newline_in_char_const_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("'\n'");
+            let mut lexer = make_lexer("'\n'", None);
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
         pub fn recognizes_string_const<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("\"hello\"");
+            let mut lexer = make_lexer("\"hello\"", None);
 
             assert_token(&mut lexer, TokenType::StringConst, "hello");
         }
 
         pub fn recognizes_empty_string_const<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("\"\"");
+            let mut lexer = make_lexer("\"\"", None);
 
             assert_token(&mut lexer, TokenType::StringConst, "");
         }
 
         pub fn recognizes_string_const_with_symbols<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("\"123 !@#$%\"");
+            let mut lexer = make_lexer("\"123 !@#$%\"", None);
 
             assert_token(&mut lexer, TokenType::StringConst, "123 !@#$%");
         }
 
         pub fn string_const_consumes_closing_quote<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("\"hello\"+");
+            let mut lexer = make_lexer("\"hello\"+", None);
 
             assert_token(&mut lexer, TokenType::StringConst, "hello");
 
@@ -581,20 +606,20 @@ mod tests {
 
         pub fn unterminated_string_const_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("\"hello");
+            let mut lexer = make_lexer("\"hello", None);
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
 
         pub fn newline_in_string_const_is_error<F, L>(make_lexer: F)
         where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer("\"hello\nworld\"");
+            let mut lexer = make_lexer("\"hello\nworld\"", None);
 
             assert_token_type(&mut lexer, TokenType::Undef);
         }
@@ -604,20 +629,26 @@ mod tests {
             input: &str,
             expected_type: TokenType,
         ) where
-            F: FnOnce(&str) -> L,
+            F: FnOnce(&str, Option<HashMap<&'static str, TokenType>>) -> L,
             L: TLexer,
         {
-            let mut lexer = make_lexer(input);
+            let mut lexer = make_lexer(input, None);
 
             assert_token(&mut lexer, expected_type, input);
         }
     }
 
     mod lexer_contract_tests {
+        use std::collections::HashMap;
+
         use super::*;
 
-        fn make_lexer(input: &str) -> Lexer<DummyScanner> {
-            Lexer::new(DummyScanner::new(input))
+        fn make_lexer(
+            input: &str,
+            reserved_words: Option<HashMap<&'static str, TokenType>>,
+        ) -> Lexer<DummyScanner> {
+            let reserved_words = reserved_words.unwrap_or(HashMap::new());
+            Lexer::new(DummyScanner::new(input), reserved_words)
         }
 
         #[test]
