@@ -52,7 +52,10 @@ impl fmt::Display for LexerError {
                 *character as char
             ),
             Self::InvalidCharacterLiteral { line, column } => {
-                write!(f, "invalid character literal at line {line}, column {column}")
+                write!(
+                    f,
+                    "invalid character literal at line {line}, column {column}"
+                )
             }
             Self::UnterminatedString { line, column } => {
                 write!(f, "unterminated string at line {line}, column {column}")
